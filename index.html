@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>3D Gemi İnşa Oyunu - Geliştirilmiş</title>
+  <title>3D Gemi İnşa Oyunu - Dramatik Sürüm</title>
   <style>
     :root {
       --panel: rgba(10, 16, 28, 0.84);
@@ -15,274 +15,135 @@
       --bad: #ff6161;
     }
     html, body {
-      margin: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
+      margin: 0; width: 100%; height: 100%; overflow: hidden;
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
       background: linear-gradient(180deg, #7fd3ff 0%, #87CEEB 35%, #5ec4ff 100%);
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: none;
+      user-select: none; -webkit-user-select: none; touch-action: none;
     }
     canvas { display: block; width: 100vw; height: 100vh; }
 
-    #ui-container {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-    }
+    #ui-container { position: absolute; inset: 0; pointer-events: none; transition: opacity 0.5s; }
 
     .panel {
-      background: var(--panel);
-      color: #fff;
-      border: 1px solid var(--line);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.28);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      pointer-events: auto;
+      background: var(--panel); color: #fff; border: 1px solid var(--line);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.28); backdrop-filter: blur(10px);
+      border-radius: 16px; pointer-events: auto;
+    }
+
+    #build-timer-panel {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      padding: 8px 16px; font-size: 18px; font-weight: bold; color: #ffcf5a;
+      display: none; z-index: 50; border: 1px solid rgba(255, 217, 102, 0.4);
     }
 
     #topbar {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      right: 10px;
-      display: flex;
-      gap: 10px;
-      align-items: stretch;
-      justify-content: space-between;
-      pointer-events: none;
+      position: absolute; top: 10px; left: 10px; right: 10px;
+      display: flex; gap: 10px; align-items: stretch; justify-content: space-between; pointer-events: none;
     }
 
-    #stats, #accountBox {
-      padding: 12px 14px;
-      min-width: 220px;
-    }
+    #stats, #accountBox { padding: 10px 12px; min-width: 180px; }
+    #stats { max-width: 280px; }
+    #accountBox { max-width: 280px; text-align: right; }
 
-    #stats { max-width: 320px; }
-    #accountBox { max-width: 320px; text-align: right; }
-
-    .stat-line {
-      margin-bottom: 6px;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .subtle { opacity: 0.82; font-weight: 500; font-size: 12px; }
+    .stat-line { margin-bottom: 4px; font-size: 13px; font-weight: 600; }
+    .subtle { opacity: 0.82; font-weight: 500; font-size: 11px; }
     #health-warning {
-      color: var(--bad);
-      display: none;
-      font-weight: 800;
-      margin-top: 6px;
-      animation: blink 0.9s infinite;
+      color: var(--bad); display: none; font-weight: 800; margin-top: 6px; animation: blink 0.9s infinite;
     }
     @keyframes blink { 50% { opacity: 0.15; } }
 
     #buttons {
-      position: absolute;
-      top: 110px;
-      right: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      pointer-events: auto;
+      position: absolute; top: 100px; right: 10px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
     }
     button, .mini-btn {
-      appearance: none;
-      border: 0;
-      border-radius: 14px;
-      padding: 12px 14px;
-      background: linear-gradient(180deg, #2e3a59 0%, #1e2840 100%);
-      color: white;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 10px 24px rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.08);
+      appearance: none; border: 0; border-radius: 10px; padding: 8px 12px; font-size: 12px;
+      background: linear-gradient(180deg, #2e3a59 0%, #1e2840 100%); color: white; font-weight: 700;
+      cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08);
     }
-    button:active, .mini-btn:active { transform: scale(0.98); }
+    button:active, .mini-btn:active { transform: scale(0.95); }
     #btn-start { background: linear-gradient(180deg, #ff6a5e 0%, #d83f35 100%); }
     #btn-fly { background: linear-gradient(180deg, #26c6da 0%, #0097a7 100%); display: none; }
     #btn-orient { background: linear-gradient(180deg, #8a7dff 0%, #5447d6 100%); }
     #btn-logout { background: linear-gradient(180deg, #5d6b86 0%, #404d63 100%); }
 
+    #btn-fire {
+      position: absolute; bottom: 22px; right: 22px; width: 80px; height: 80px;
+      border-radius: 50%; background: radial-gradient(circle at top, #ff4e50, #f9d423);
+      color: #000; font-weight: 900; font-size: 16px; display: none; pointer-events: auto;
+      box-shadow: 0 8px 24px rgba(255, 78, 80, 0.5); z-index: 50; border: 3px solid rgba(255,255,255,0.4);
+    }
+    #btn-fire:active { transform: scale(0.9); }
+
     #inventory {
-      position: absolute;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      width: min(94vw, 720px);
-      display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding: 10px;
-      border-radius: 18px;
-      background: rgba(8, 12, 20, 0.72);
-      pointer-events: auto;
-      border: 1px solid rgba(255,255,255,0.1);
+      position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(96vw, 780px);
+      display: flex; gap: 8px; overflow-x: auto; padding: 8px; border-radius: 14px;
+      background: rgba(8, 12, 20, 0.72); pointer-events: auto; border: 1px solid rgba(255,255,255,0.1);
     }
     .inv-item {
-      min-width: 74px;
-      min-height: 74px;
-      background: rgba(255,255,255,0.08);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 14px;
-      border: 2px solid transparent;
-      cursor: pointer;
-      font-size: 11px;
-      text-align: center;
-      flex-direction: column;
-      line-height: 1.1;
-      padding: 6px;
-      flex: 0 0 auto;
+      min-width: 65px; min-height: 65px; background: rgba(255,255,255,0.08); color: #fff;
+      display: flex; align-items: center; justify-content: center; border-radius: 12px;
+      border: 2px solid transparent; cursor: pointer; font-size: 10px; text-align: center;
+      flex-direction: column; line-height: 1.1; padding: 4px; flex: 0 0 auto;
     }
     .inv-item.selected {
-      border-color: #ffd966;
-      background: rgba(255, 217, 102, 0.16);
-      box-shadow: inset 0 0 0 1px rgba(255, 217, 102, 0.22);
+      border-color: #ffd966; background: rgba(255, 217, 102, 0.16); box-shadow: inset 0 0 0 1px rgba(255, 217, 102, 0.22);
     }
-    .inv-count {
-      margin-top: 6px;
-      font-size: 14px;
-      font-weight: 800;
-      color: #ffd966;
-    }
+    .inv-count { margin-top: 4px; font-size: 13px; font-weight: 800; color: #ffd966; }
 
     .modal, .overlay {
-      display: none;
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(92vw, 420px);
-      background: #111827;
-      color: white;
-      padding: 18px;
-      border-radius: 18px;
-      pointer-events: auto;
-      z-index: 40;
-      border: 1px solid rgba(255,255,255,0.12);
-      box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+      display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: min(92vw, 420px); background: #111827; color: white; padding: 18px; border-radius: 18px;
+      pointer-events: auto; z-index: 40; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 50px rgba(0,0,0,0.45);
     }
 
     #auth-overlay {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: absolute;
-      inset: 0;
-      z-index: 80;
-      background: radial-gradient(circle at top, rgba(255,255,255,0.25), rgba(0,0,0,0.35));
-      backdrop-filter: blur(8px);
-      pointer-events: auto;
+      display: flex; align-items: center; justify-content: center; position: absolute; inset: 0; z-index: 80;
+      background: radial-gradient(circle at top, rgba(255,255,255,0.25), rgba(0,0,0,0.35)); backdrop-filter: blur(8px); pointer-events: auto;
     }
     #auth-card {
-      width: min(92vw, 430px);
-      background: rgba(10, 16, 28, 0.92);
-      color: #fff;
-      border-radius: 22px;
-      border: 1px solid rgba(255,255,255,0.12);
-      padding: 20px;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+      width: min(92vw, 430px); background: rgba(10, 16, 28, 0.92); color: #fff; border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.12); padding: 20px; box-shadow: 0 24px 60px rgba(0,0,0,0.45);
     }
     #auth-card h1 { margin: 0 0 8px; font-size: 24px; }
     #auth-card p { margin: 0 0 18px; opacity: 0.82; font-size: 13px; line-height: 1.45; }
     .auth-tabs { display: flex; gap: 10px; margin-bottom: 14px; }
-    .tab-btn {
-      flex: 1;
-      background: rgba(255,255,255,0.08);
-    }
-    .tab-btn.active {
-      background: linear-gradient(180deg, #5be0ff 0%, #0ea5e9 100%);
-      color: #04111b;
-    }
+    .tab-btn { flex: 1; background: rgba(255,255,255,0.08); }
+    .tab-btn.active { background: linear-gradient(180deg, #5be0ff 0%, #0ea5e9 100%); color: #04111b; }
     .field {
-      width: 100%;
-      box-sizing: border-box;
-      margin: 8px 0;
-      padding: 14px 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: #fff;
-      font-size: 15px;
-      outline: none;
+      width: 100%; box-sizing: border-box; margin: 8px 0; padding: 14px 14px; border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #fff; font-size: 15px; outline: none;
     }
     .field::placeholder { color: rgba(255,255,255,0.55); }
     .auth-actions { display: flex; gap: 10px; margin-top: 10px; }
     .auth-actions button { flex: 1; }
-    #auth-msg {
-      margin-top: 12px;
-      min-height: 18px;
-      font-size: 13px;
-      color: #ffd966;
-    }
+    #auth-msg { margin-top: 12px; min-height: 18px; font-size: 13px; color: #ffd966; }
 
     #shop-menu h3, #save-menu h3 { margin-top: 4px; }
-    .slot-btn, .crate-btn {
-      width: 100%;
-      margin: 6px 0;
-      padding: 14px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.08);
-    }
+    .slot-btn, .crate-btn { width: 100%; margin: 6px 0; padding: 14px; border-radius: 14px; background: rgba(255,255,255,0.08); }
     .crate-btn { background: linear-gradient(180deg, #ff9f43 0%, #ea7f1d 100%); }
 
     #joystick-wrap {
-      position: absolute;
-      left: 14px;
-      bottom: 22px;
-      width: 150px;
-      height: 150px;
-      display: none;
-      pointer-events: auto;
-      z-index: 30;
+      position: absolute; left: 14px; bottom: 22px; width: 120px; height: 120px; display: block;
+      pointer-events: auto; z-index: 30;
     }
     #joystick-base {
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.14);
-      box-shadow: inset 0 0 22px rgba(0,0,0,0.22);
-      backdrop-filter: blur(4px);
+      position: absolute; inset: 0; border-radius: 50%; background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14); box-shadow: inset 0 0 22px rgba(0,0,0,0.22); backdrop-filter: blur(4px);
     }
     #joystick-thumb {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      background: radial-gradient(circle at top, #7ef0ff, #1581d6);
-      box-shadow: 0 8px 22px rgba(0,0,0,0.3);
-      transition: transform 0.03s linear;
+      position: absolute; left: 50%; top: 50%; width: 45px; height: 45px; border-radius: 50%; transform: translate(-50%, -50%);
+      background: radial-gradient(circle at top, #7ef0ff, #1581d6); box-shadow: 0 8px 22px rgba(0,0,0,0.3); transition: transform 0.03s linear;
     }
 
     #rotate-hint {
-      position: absolute;
-      left: 50%;
-      top: 12px;
-      transform: translateX(-50%);
-      display: none;
-      z-index: 32;
-      pointer-events: auto;
-      padding: 10px 14px;
-      border-radius: 999px;
-      background: rgba(17, 24, 39, 0.78);
-      color: #fff;
-      font-size: 13px;
-      border: 1px solid rgba(255,255,255,0.12);
+      position: absolute; left: 50%; top: 12px; transform: translateX(-50%); display: none; z-index: 32; pointer-events: auto;
+      padding: 10px 14px; border-radius: 999px; background: rgba(17, 24, 39, 0.78); color: #fff; font-size: 13px; border: 1px solid rgba(255,255,255,0.12);
     }
 
     @media (max-width: 720px) {
       #topbar { flex-direction: column; align-items: stretch; }
-      #buttons { top: 190px; right: 10px; }
+      #buttons { top: 150px; right: 10px; opacity: 0.85; }
       #stats, #accountBox { min-width: 0; }
-      #joystick-wrap { display: block; }
     }
   </style>
 
@@ -294,8 +155,8 @@
 <body>
   <div id="auth-overlay">
     <div id="auth-card">
-      <h1>Hoş geldin</h1>
-      <p>Kullanıcı adı ve şifre ile giriş yap. Yeni hesap açınca bilgiler Firebase’e kaydedilir.</p>
+      <h1>Hoş geldin Usta İnşacı</h1>
+      <p>Kullanıcı adı ve şifre ile giriş yap. Destansı maceran buluta kaydedilecek.</p>
       <div class="auth-tabs">
         <button class="tab-btn active" id="tab-login" onclick="setAuthMode('login')">Giriş Yap</button>
         <button class="tab-btn" id="tab-register" onclick="setAuthMode('register')">Kayıt Ol</button>
@@ -316,6 +177,10 @@
 
   <div id="rotate-hint">Ekranı yatay kullanman daha iyi olur. <button class="mini-btn" style="margin-left:8px;padding:8px 10px;" onclick="lockLandscape()">Yatay Mod</button></div>
 
+  <!-- Süre Göstergesi -->
+  <div id="build-timer-panel" class="panel">İnşa Süresi: <span id="time-left">120</span>s</div>
+
+  <!-- TÜM UI ELEMANLARI BU KUTUNUN İÇİNDE (Animasyonda gizlenecek) -->
   <div id="ui-container">
     <div id="topbar">
       <div id="stats" class="panel">
@@ -349,12 +214,23 @@
       <button onclick="openSaveMenu()">Kayıt (Save/Load)</button>
     </div>
 
+    <button id="btn-fire" onclick="fireCannons()">ATEŞ ET!</button>
+
     <div id="inventory">
-      <div class="inv-item selected" onclick="selectBlock('wood', this)">Odun<br>(Can: 2)<div class="inv-count" id="inv-wood">50</div></div>
-      <div class="inv-item" onclick="selectBlock('stone', this)">Taş<br>(Can: 5)<div class="inv-count" id="inv-stone">20</div></div>
-      <div class="inv-item" onclick="selectBlock('metal', this)">Metal<br>(Can: 10)<div class="inv-count" id="inv-metal">5</div></div>
-      <div class="inv-item" onclick="selectBlock('engine', this)">Motor<div class="inv-count" id="inv-engine">1</div></div>
-      <div class="inv-item" onclick="selectBlock('seat', this)">Oturak<div class="inv-count" id="inv-seat">1</div></div>
+      <div class="inv-item selected" onclick="selectBlock('wood', this)">Odun<br>(Can: 2)<div class="inv-count" id="inv-wood">150</div></div>
+      <div class="inv-item" onclick="selectBlock('stone', this)">Taş<br>(Can: 5)<div class="inv-count" id="inv-stone">80</div></div>
+      <div class="inv-item" onclick="selectBlock('metal', this)">Metal<br>(Can: 10)<div class="inv-count" id="inv-metal">25</div></div>
+      <div class="inv-item" onclick="selectBlock('glass', this)">Cam<br>(Can: 1)<div class="inv-count" id="inv-glass">20</div></div>
+      <div class="inv-item" onclick="selectBlock('obsidian', this)">Obsidyen<br>(Can: 25)<div class="inv-count" id="inv-obsidian">5</div></div>
+      <div class="inv-item" onclick="selectBlock('gold', this)">Altın<br>(Can: 8)<div class="inv-count" id="inv-gold">10</div></div>
+      <!-- YEPYENİ BLOKLAR -->
+      <div class="inv-item" onclick="selectBlock('diamond', this)">Elmas<br>(Can: 15)<div class="inv-count" id="inv-diamond">2</div></div>
+      <div class="inv-item" onclick="selectBlock('emerald', this)">Zümrüt<br>(Can: 12)<div class="inv-count" id="inv-emerald">3</div></div>
+      <div class="inv-item" onclick="selectBlock('neon', this)">Neon<br>(Can: 3)<div class="inv-count" id="inv-neon">10</div></div>
+
+      <div class="inv-item" onclick="selectBlock('cannon', this)">Top<br>(Can: 5)<div class="inv-count" id="inv-cannon">3</div></div>
+      <div class="inv-item" onclick="selectBlock('engine', this)">Motor<div class="inv-count" id="inv-engine">2</div></div>
+      <div class="inv-item" onclick="selectBlock('seat', this)">Oturak<div class="inv-count" id="inv-seat">2</div></div>
     </div>
 
     <div id="joystick-wrap" aria-label="joystick">
@@ -363,10 +239,11 @@
     </div>
 
     <div id="shop-menu" class="modal">
-      <h3 style="color:#ffd966; margin-top:0;">Dükkan</h3>
-      <p style="font-size: 12px; color: #ddd; line-height:1.5;">Bölgeleri geçtikçe ödüller artar. Kutu açarak malzeme kazanabilirsin.</p>
-      <button class="crate-btn" onclick="buyCrate('ucuz')">Tahta Kutu (50 ₺)<br><small>Rastgele Odun / Taş</small></button>
-      <button class="crate-btn" style="background:linear-gradient(180deg,#f06292 0%, #c2185b 100%);" onclick="buyCrate('pahali')">Gelişmiş Kutu (250 ₺)<br><small>Rastgele Metal / Motor / Oturak</small></button>
+      <h3 style="color:#ffd966; margin-top:0;">Efsanevi Dükkan</h3>
+      <p style="font-size: 12px; color: #ddd; line-height:1.5;">Oyun zorlaştı! Hayatta kalmak için özel kutuları açmalısın.</p>
+      <button class="crate-btn" onclick="buyCrate('ucuz')">Tahta Kutu (50 ₺)<br><small>Bol Odun / Taş / Cam</small></button>
+      <button class="crate-btn" style="background:linear-gradient(180deg,#f06292 0%, #c2185b 100%);" onclick="buyCrate('pahali')">Gelişmiş Kutu (300 ₺)<br><small>Metal / Motor / Oturak / Top / Neon</small></button>
+      <button class="crate-btn" style="background:linear-gradient(180deg,#8a2be2 0%, #4b0082 100%);" onclick="buyCrate('efsane')">Efsanevi Kutu (1000 ₺)<br><small>Obsidyen, Altın, Elmas ve Zümrüt!</small></button>
       <button style="width:100%; margin: 10px 0; padding: 15px; background: linear-gradient(180deg,#26c6da 0%, #0097a7 100%); border-radius:14px;" onclick="buyPlane()">Uçak Satın Al (10 Kanat)</button>
       <button onclick="closeModals()" style="background: linear-gradient(180deg,#ff6a5e 0%, #d83f35 100%); width:100%; padding: 12px; border-radius:14px;">Kapat</button>
     </div>
@@ -390,18 +267,11 @@
       measurementId: "G-ZD4FJ8X9KX"
     };
 
-    let auth = null;
-    let db = null;
-    try {
-      firebase.initializeApp(firebaseConfig);
-      auth = firebase.auth();
-      db = firebase.firestore();
-    } catch (err) {
-      console.warn('Firebase başlatılamadı:', err);
-    }
+    let auth = null; let db = null;
+    try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); db = firebase.firestore(); } 
+    catch (err) { console.warn('Firebase başlatılamadı:', err); }
 
-    let authMode = 'login';
-    let currentUser = null;
+    let authMode = 'login'; let currentUser = null;
 
     function setAuthMode(mode) {
       authMode = mode;
@@ -414,33 +284,23 @@
 
     function setAuthMessage(text, isError = false) {
       const el = document.getElementById('auth-msg');
-      el.style.color = isError ? '#ff8181' : '#ffd966';
-      el.innerText = text || '';
+      el.style.color = isError ? '#ff8181' : '#ffd966'; el.innerText = text || '';
     }
 
     function normalizeUsername(name) {
-      return String(name || '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, '.')
-        .replace(/[^a-z0-9._-]/g, '')
-        .replace(/\.+/g, '.')
-        .replace(/^\.|\.$/g, '');
+      return String(name || '').trim().toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '').replace(/\.+/g, '.').replace(/^\.|\.$/g, '');
     }
 
     function usernameToEmail(username) {
-      const clean = normalizeUsername(username);
-      return clean ? `${clean}@buildboat.local` : '';
+      const clean = normalizeUsername(username); return clean ? `${clean}@buildboat.local` : '';
     }
 
     async function submitAuth() {
-      if (!auth) {
-        setAuthMessage('Firebase bağlantısı kurulamıyor.', true);
-        return;
-      }
+      if (!auth) return setAuthMessage('Firebase bağlantısı kurulamıyor.', true);
       const username = document.getElementById('auth-username').value.trim();
       const password = document.getElementById('auth-password').value;
       const character = document.getElementById('character-select').value || 'male';
+      selectedCharacter = character;
       if (username.length < 3) return setAuthMessage('Kullanıcı adı en az 3 karakter olsun.', true);
       if (password.length < 6) return setAuthMessage('Şifre en az 6 karakter olsun.', true);
 
@@ -452,36 +312,25 @@
           const result = await auth.createUserWithEmailAndPassword(email, password);
           if (result.user) {
             await result.user.updateProfile({ displayName: username });
-            if (db) {
-              await db.collection('players').doc(result.user.uid).set({
-                username,
-                email,
-                character,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+            if (db) await db.collection('players').doc(result.user.uid).set({
+                username, email, character, createdAt: firebase.firestore.FieldValue.serverTimestamp(), lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
               }, { merge: true });
-            }
           }
           setAuthMessage('Kayıt başarılı. Oyuna giriliyor...');
         } else {
           const result = await auth.signInWithEmailAndPassword(email, password);
           if (db && result.user) {
             await db.collection('players').doc(result.user.uid).set({
-              username: result.user.displayName || username,
-              email,
-              character,
-              lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+              username: result.user.displayName || username, email, character, lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
           }
           setAuthMessage('Giriş başarılı.');
         }
       } catch (err) {
-        console.error(err);
         let msg = 'İşlem başarısız.';
         if (err && err.code === 'auth/email-already-in-use') msg = 'Bu kullanıcı adı zaten kayıtlı.';
         if (err && err.code === 'auth/user-not-found') msg = 'Kullanıcı bulunamadı.';
         if (err && err.code === 'auth/wrong-password') msg = 'Şifre yanlış.';
-        if (err && err.code === 'auth/invalid-email') msg = 'Kullanıcı adı geçersiz.';
         if (err && err.code === 'auth/weak-password') msg = 'Şifre çok zayıf.';
         setAuthMessage(msg, true);
       }
@@ -493,15 +342,12 @@
       setAuthMessage('İstersen demo kullanıcı adıyla deneyebilirsin.');
     }
 
-    function logoutUser() {
-      if (!auth) return;
-      auth.signOut();
-    }
+    function logoutUser() { if (auth) auth.signOut(); }
 
     let selectedCharacter = 'male';
     let buildCameraTarget = new THREE.Vector3(0, 0, 0);
-    let cloudSaveTimer = null;
-    let cloudSavePending = false;
+    let cloudSaveTimer = null; let cloudSavePending = false;
+    let playerCharacterModel = null;
 
     function updateCharacterBadge() {
       const el = document.getElementById('current-character-text');
@@ -509,35 +355,23 @@
     }
 
     function centerBuildView() {
-      buildCameraTarget.set(0, 0, 0);
-      updatePlacementPreview(lastHoveredCell);
+      buildCameraTarget.set(0, 0, 0); updatePlacementPreview(lastHoveredCell);
     }
 
     function scheduleCloudSave() {
       if (!currentUser || !db) return;
       cloudSavePending = true;
       if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
-      cloudSaveTimer = setTimeout(() => {
-        if (cloudSavePending) saveGameToCloud().catch(console.warn);
-      }, 1200);
+      cloudSaveTimer = setTimeout(() => { if (cloudSavePending) saveGameToCloud().catch(console.warn); }, 1200);
     }
 
     async function saveGameToCloud() {
       if (!currentUser || !db) return;
       cloudSavePending = false;
-      const ship = boatBlocks.map((b) => ({
-        x: b.position.x,
-        y: b.position.y,
-        z: b.position.z,
-        type: b.userData.type
-      }));
+      const ship = boatBlocks.map((b) => ({ x: b.position.x, y: b.position.y, z: b.position.z, type: b.userData.type }));
       await db.collection('players').doc(currentUser.uid).set({
         username: currentUser.displayName || currentUser.email || 'Oyuncu',
-        character: selectedCharacter,
-        playerData,
-        currentZone,
-        gameState,
-        ship,
+        character: selectedCharacter, playerData, currentZone, gameState, ship,
         savedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge: true });
     }
@@ -556,614 +390,542 @@
         if (data.playerData) playerData = { ...playerData, ...data.playerData };
         if (typeof data.currentZone === 'number') currentZone = data.currentZone;
         if (Array.isArray(data.ship)) {
-          boatBlocks.forEach((b) => boatGroup.remove(b));
-          boatBlocks = [];
+          boatBlocks.forEach((b) => boatGroup.remove(b)); boatBlocks = [];
           data.ship.forEach((saved) => {
             const geometry = new THREE.BoxGeometry(1, 1, 1);
-            const material = new THREE.MeshLambertMaterial({ color: blockData[saved.type].color });
+            const material = new THREE.MeshLambertMaterial({ 
+              color: blockData[saved.type].color, 
+              transparent: blockData[saved.type].transparent || false, 
+              opacity: blockData[saved.type].opacity || 1 
+            });
             const block = new THREE.Mesh(geometry, material);
-            block.position.set(saved.x, saved.y, saved.z);
-            block.userData = { type: saved.type, hp: blockData[saved.type].hp };
-            boatGroup.add(block);
-            boatBlocks.push(block);
+            block.position.set(saved.x, saved.y, saved.z); block.userData = { type: saved.type, hp: blockData[saved.type].hp };
+            boatGroup.add(block); boatBlocks.push(block);
           });
         }
-        updateCharacterBadge();
-        updateUI();
-      } catch (e) {
-        console.warn('Cloud load failed', e);
-      }
+        updateCharacterBadge(); updateUI();
+      } catch (e) { console.warn('Cloud load failed', e); }
+    }
+
+    let buildTimeRemaining = 120;
+    let buildTimerInterval = null;
+
+    function startBuildTimer() {
+      clearInterval(buildTimerInterval); buildTimeRemaining = 120;
+      document.getElementById('build-timer-panel').style.display = 'block';
+      document.getElementById('time-left').innerText = buildTimeRemaining;
+      
+      buildTimerInterval = setInterval(() => {
+        if (gameState === 'build') {
+          buildTimeRemaining--; document.getElementById('time-left').innerText = buildTimeRemaining;
+          if (buildTimeRemaining <= 0) {
+            clearInterval(buildTimerInterval); alert("Süre doldu! Denize açılıyorsun!");
+            if(gameState === 'build') toggleGameState();
+          }
+        }
+      }, 1000);
     }
 
     if (auth) {
       auth.onAuthStateChanged(async (user) => {
         currentUser = user || null;
-        const overlay = document.getElementById('auth-overlay');
-        const nameText = document.getElementById('current-user-text');
+        const overlay = document.getElementById('auth-overlay'); const nameText = document.getElementById('current-user-text');
         const loginStatus = document.getElementById('login-status');
         if (user) {
           overlay.style.display = 'none';
-          const display = user.displayName || user.email || 'Oyuncu';
-          nameText.innerText = display;
-          loginStatus.innerText = 'Giriş yapıldı';
-          setAuthMessage('');
-          await loadGameFromCloud(user);
-          updateCharacterBadge();
+          nameText.innerText = user.displayName || user.email || 'Oyuncu'; loginStatus.innerText = 'Giriş yapıldı';
+          setAuthMessage(''); await loadGameFromCloud(user); updateCharacterBadge(); startBuildTimer();
         } else {
           overlay.style.display = 'flex';
-          nameText.innerText = 'Misafir';
-          loginStatus.innerText = 'Giriş bekleniyor';
-          document.getElementById('current-character-text').innerText = 'Karakter: -';
+          nameText.innerText = 'Misafir'; loginStatus.innerText = 'Giriş bekleniyor';
+          document.getElementById('current-character-text').innerText = 'Karakter: -'; clearInterval(buildTimerInterval);
         }
       });
     }
 
-    // --- OYUN VERİLERİ ---
     let playerData = {
-      money: 0,
-      wings: 0,
-      hp: 100,
-      hasPlane: false,
-      fuel: 100,
-      inventory: { wood: 50, stone: 20, metal: 5, engine: 1, seat: 1 }
+      money: 0, wings: 0, hp: 100, hasPlane: false, fuel: 100,
+      inventory: { wood: 150, stone: 80, metal: 25, glass: 20, obsidian: 5, gold: 10, diamond: 2, emerald: 3, neon: 10, engine: 2, seat: 2, cannon: 3 }
     };
 
-    let gameState = 'build';
-    let currentZone = 0;
-    let selectedBlockType = 'wood';
-    let boatBlocks = [];
-    let obstacles = [];
-    let isFlying = false;
-    let inWater = false;
-    let controlVector = { x: 0, y: 0 };
-    let targetBoatRotation = 0;
-    let activePointerId = null;
-let removeMode = false;
-let lastHoveredCell = null;
+    let gameState = 'build'; // 'build', 'sail', 'ending'
+    let currentZone = 0; let selectedBlockType = 'wood';
+    let boatBlocks = []; let obstacles = []; let isFlying = false; let inWater = false;
+    let controlVector = { x: 0, y: 0 }; let targetBoatRotation = 0;
+    let activePointerId = null; let removeMode = false; let lastHoveredCell = null;
+    let projectiles = [];
 
+    // BİYOMLAR
+    const biomes = [
+      { sky: 0x87CEEB, water: 0x1E90FF, rock: 0x666666, wall: 0x444444 }, // Normal
+      { sky: 0x2e8b57, water: 0x008000, rock: 0x800080, wall: 0x1a331a }, // Zehir
+      { sky: 0x8b0000, water: 0xff4500, rock: 0x111111, wall: 0x330000 }, // Lav
+      { sky: 0xddeeff, water: 0x00ffff, rock: 0xffffff, wall: 0x88bbcc }, // Buzul
+      { sky: 0x0a0a1a, water: 0x4b0082, rock: 0x00ffcc, wall: 0x111122 }  // Uzay
+    ];
+    let lastGeneratedZ = 0;
+    let environmentChunks = []; 
+
+    // YENİ BLOK VERİLERİ (Elmas, Zümrüt, Neon Eklendi)
     const blockData = {
-      wood: { color: 0x8B4513, hp: 2 },
+      wood: { color: 0x8B4513, hp: 2 }, 
       stone: { color: 0x808080, hp: 5 },
-      metal: { color: 0xAAAAAA, hp: 10 },
-      engine: { color: 0x222222, hp: 3 },
+      metal: { color: 0xAAAAAA, hp: 10 }, 
+      glass: { color: 0x88ccff, hp: 1, transparent: true, opacity: 0.4 },
+      obsidian: { color: 0x1a052e, hp: 25 }, 
+      gold: { color: 0xffd700, hp: 8 }, 
+      diamond: { color: 0x00ffff, hp: 15, transparent: true, opacity: 0.8 },
+      emerald: { color: 0x50c878, hp: 12, transparent: true, opacity: 0.9 },
+      neon: { color: 0xff00ff, hp: 3 }, // Çok parlak renk
+      cannon: { color: 0x111111, hp: 5 },
+      engine: { color: 0x222222, hp: 3 }, 
       seat: { color: 0x0047ab, hp: 1 }
     };
 
-    // --- THREE.JS KURULUMU ---
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.Fog(0x87CEEB, 20, 130);
-
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 12, 18);
-    camera.lookAt(0, 0, 0);
-
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.set(0, 12, 18); camera.lookAt(0, 0, 0);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    document.body.appendChild(renderer.domElement);
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.78);
-    scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
-    dirLight.position.set(20, 40, 20);
-    scene.add(dirLight);
+    renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); document.body.appendChild(renderer.domElement);
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7); dirLight.position.set(20, 40, 20); scene.add(dirLight);
 
     const waterGeometry = new THREE.PlaneGeometry(1000, 5000);
     const waterMaterial = new THREE.MeshBasicMaterial({ color: 0x1E90FF, transparent: true, opacity: 0.82 });
-    const water = new THREE.Mesh(waterGeometry, waterMaterial);
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = -0.5;
-    scene.add(water);
+    const water = new THREE.Mesh(waterGeometry, waterMaterial); water.rotation.x = -Math.PI / 2; water.position.y = -0.5; scene.add(water);
 
-    const gridSize = 20;
-    const gridHelper = new THREE.GridHelper(gridSize, gridSize, 0x2b2b2b, 0xffffff);
-    scene.add(gridHelper);
+    const gridSize = 20; const gridHelper = new THREE.GridHelper(gridSize, gridSize, 0x2b2b2b, 0xffffff); scene.add(gridHelper);
+    const buildPlaneGeo = new THREE.PlaneGeometry(gridSize, gridSize); const buildPlaneMat = new THREE.MeshBasicMaterial({ visible: false });
+    const buildPlane = new THREE.Mesh(buildPlaneGeo, buildPlaneMat); buildPlane.rotation.x = -Math.PI / 2; scene.add(buildPlane);
+    const borderGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(gridSize, 0.01, gridSize)); const borderMat = new THREE.LineBasicMaterial({ color: 0xff3d3d, linewidth: 2 });
+    const border = new THREE.LineSegments(borderGeo, borderMat); scene.add(border);
+    const boatGroup = new THREE.Group(); scene.add(boatGroup);
 
-    const buildPlaneGeo = new THREE.PlaneGeometry(gridSize, gridSize);
-    const buildPlaneMat = new THREE.MeshBasicMaterial({ visible: false });
-    const buildPlane = new THREE.Mesh(buildPlaneGeo, buildPlaneMat);
-    buildPlane.rotation.x = -Math.PI / 2;
-    scene.add(buildPlane);
+    const placementPreview = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), new THREE.MeshBasicMaterial({ color: 0x5be0ff, transparent: true, opacity: 0.35, depthWrite: false }));
+    placementPreview.visible = false; placementPreview.renderOrder = 999; scene.add(placementPreview);
+    const buildFocusMarker = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.05, 18), new THREE.MeshBasicMaterial({ color: 0xffd966, transparent: true, opacity: 0.8 }));
+    buildFocusMarker.rotation.x = Math.PI / 2; scene.add(buildFocusMarker);
+    const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
 
-    const borderGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(gridSize, 0.01, gridSize));
-    const borderMat = new THREE.LineBasicMaterial({ color: 0xff3d3d, linewidth: 2 });
-    const border = new THREE.LineSegments(borderGeo, borderMat);
-    scene.add(border);
+    function createCharacterModel(type) {
+      const charGroup = new THREE.Group();
+      const skinColor = type === 'female' ? 0xffe0bd : 0xffcc99;
+      const shirtColor = type === 'female' ? 0xff69b4 : 0x1e90ff; 
 
-    const boatGroup = new THREE.Group();
-    scene.add(boatGroup);
+      const headGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5); const headMat = new THREE.MeshLambertMaterial({ color: skinColor });
+      const head = new THREE.Mesh(headGeo, headMat); head.position.y = 1.4; charGroup.add(head);
 
-    const placementPreview = new THREE.Mesh(
-      new THREE.BoxGeometry(1.02, 1.02, 1.02),
-      new THREE.MeshBasicMaterial({ color: 0x5be0ff, transparent: true, opacity: 0.35, depthWrite: false })
-    );
-    placementPreview.visible = false;
-    placementPreview.renderOrder = 999;
-    scene.add(placementPreview);
+      const bodyGeo = new THREE.BoxGeometry(0.6, 0.7, 0.3); const bodyMat = new THREE.MeshLambertMaterial({ color: shirtColor });
+      const body = new THREE.Mesh(bodyGeo, bodyMat); body.position.y = 0.8; charGroup.add(body);
 
-    const buildFocusMarker = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.26, 0.26, 0.05, 18),
-      new THREE.MeshBasicMaterial({ color: 0xffd966, transparent: true, opacity: 0.8 })
-    );
-    buildFocusMarker.rotation.x = Math.PI / 2;
-    scene.add(buildFocusMarker);
+      const legGeo = new THREE.BoxGeometry(0.25, 0.5, 0.25); const legMat = new THREE.MeshLambertMaterial({ color: 0x333333 }); 
+      
+      const leftLeg = new THREE.Mesh(legGeo, legMat); leftLeg.position.set(-0.15, 0.25, 0); charGroup.add(leftLeg);
+      const rightLeg = new THREE.Mesh(legGeo, legMat); rightLeg.position.set(0.15, 0.25, 0); charGroup.add(rightLeg);
+      
+      charGroup.userData.leftLeg = leftLeg;
+      charGroup.userData.rightLeg = rightLeg;
 
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
+      return charGroup;
+    }
 
     function setControlVectorFromPoint(clientX, clientY) {
       const wrap = document.getElementById('joystick-wrap').getBoundingClientRect();
-      const base = {
-        x: wrap.left + wrap.width / 2,
-        y: wrap.top + wrap.height / 2
-      };
-      const dx = clientX - base.x;
-      const dy = clientY - base.y;
-      const max = wrap.width * 0.32;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const clamped = Math.min(len, max);
-      const nx = (dx / len) * clamped / max;
-      const ny = (dy / len) * clamped / max;
-      controlVector.x = Math.max(-1, Math.min(1, nx));
-      controlVector.y = Math.max(-1, Math.min(1, -ny));
+      const base = { x: wrap.left + wrap.width / 2, y: wrap.top + wrap.height / 2 };
+      const dx = clientX - base.x; const dy = clientY - base.y; const max = wrap.width * 0.32;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1; const clamped = Math.min(len, max);
+      const nx = (dx / len) * clamped / max; const ny = (dy / len) * clamped / max;
+      controlVector.x = Math.max(-1, Math.min(1, nx)); controlVector.y = Math.max(-1, Math.min(1, -ny));
       updateJoystickThumb();
     }
 
     function updateJoystickThumb() {
-      const thumb = document.getElementById('joystick-thumb');
-      const wrap = document.getElementById('joystick-wrap').getBoundingClientRect();
-      const max = wrap.width * 0.26;
-      const x = controlVector.x * max;
-      const y = -controlVector.y * max;
+      const thumb = document.getElementById('joystick-thumb'); const wrap = document.getElementById('joystick-wrap').getBoundingClientRect();
+      const max = wrap.width * 0.26; const x = controlVector.x * max; const y = -controlVector.y * max;
       thumb.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
     }
 
-    function resetJoystick() {
-      controlVector.x = 0;
-      controlVector.y = 0;
-      activePointerId = null;
-      updateJoystickThumb();
-    }
+    function resetJoystick() { controlVector.x = 0; controlVector.y = 0; activePointerId = null; updateJoystickThumb(); }
 
     const joystickWrap = document.getElementById('joystick-wrap');
     joystickWrap.addEventListener('pointerdown', (e) => {
-      if (gameState !== 'sail') return;
-      activePointerId = e.pointerId;
-      joystickWrap.setPointerCapture(e.pointerId);
-      setControlVectorFromPoint(e.clientX, e.clientY);
-      e.preventDefault();
+      activePointerId = e.pointerId; joystickWrap.setPointerCapture(e.pointerId);
+      setControlVectorFromPoint(e.clientX, e.clientY); e.preventDefault();
     });
     joystickWrap.addEventListener('pointermove', (e) => {
       if (activePointerId !== e.pointerId) return;
-      setControlVectorFromPoint(e.clientX, e.clientY);
-      e.preventDefault();
+      setControlVectorFromPoint(e.clientX, e.clientY); e.preventDefault();
     });
     joystickWrap.addEventListener('pointerup', (e) => {
       if (activePointerId !== e.pointerId) return;
-      resetJoystick();
-      e.preventDefault();
+      resetJoystick(); e.preventDefault();
     });
     joystickWrap.addEventListener('pointercancel', resetJoystick);
-    joystickWrap.addEventListener('pointerleave', (e) => {
-      if (activePointerId === e.pointerId) resetJoystick();
-    });
-
-
-    function getCellKey(x, y, z) {
-      return `${x}|${y}|${z}`;
-    }
+    joystickWrap.addEventListener('pointerleave', (e) => { if (activePointerId === e.pointerId) resetJoystick(); });
 
     function getTopBlockYAt(x, z) {
       let maxY = -1;
       for (const block of boatBlocks) {
-        const bx = Math.round(block.position.x);
-        const bz = Math.round(block.position.z);
-        if (bx === x && bz === z) {
-          maxY = Math.max(maxY, Math.round(block.position.y));
-        }
-      }
-      return maxY;
+        if (Math.round(block.position.x) === x && Math.round(block.position.z) === z) maxY = Math.max(maxY, Math.round(block.position.y));
+      } return maxY;
     }
 
-    function getBlockAtCell(x, y, z) {
-      return boatBlocks.find((b) => Math.round(b.position.x) === x && Math.round(b.position.y) === y && Math.round(b.position.z) === z) || null;
-    }
+    function getBlockAtCell(x, y, z) { return boatBlocks.find((b) => Math.round(b.position.x) === x && Math.round(b.position.y) === y && Math.round(b.position.z) === z) || null; }
 
     function raycastBuildTarget(clientX, clientY) {
-      mouse.x = (clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-      raycaster.setFromCamera(mouse, camera);
-
-      const hits = raycaster.intersectObjects([buildPlane, ...boatBlocks], false);
-      if (!hits.length) return null;
-
+      mouse.x = (clientX / window.innerWidth) * 2 - 1; mouse.y = -(clientY / window.innerHeight) * 2 + 1; raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects([buildPlane, ...boatBlocks], false); if (!hits.length) return null;
       const hit = hits[0];
       if (hit.object === buildPlane) {
-        const x = Math.max(-9, Math.min(9, Math.round(hit.point.x)));
-        const z = Math.max(-9, Math.min(9, Math.round(hit.point.z)));
-        const topY = getTopBlockYAt(x, z);
-        return { x, y: topY + 1, z, hitType: 'plane' };
+        const x = Math.max(-9, Math.min(9, Math.round(hit.point.x))); const z = Math.max(-9, Math.min(9, Math.round(hit.point.z)));
+        const topY = getTopBlockYAt(x, z); return { x, y: topY + 1, z, hitType: 'plane' };
       }
-
       const worldNormal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).round();
-      const worldPos = hit.object.getWorldPosition(new THREE.Vector3());
-      const target = worldPos.clone().add(worldNormal);
-      return {
-        x: Math.max(-9, Math.min(9, Math.round(target.x))),
-        y: Math.max(0, Math.round(target.y)),
-        z: Math.max(-9, Math.min(9, Math.round(target.z))),
-        hitType: 'block',
-        source: hit.object
-      };
+      const worldPos = hit.object.getWorldPosition(new THREE.Vector3()); const target = worldPos.clone().add(worldNormal);
+      return { x: Math.max(-9, Math.min(9, Math.round(target.x))), y: Math.max(0, Math.round(target.y)), z: Math.max(-9, Math.min(9, Math.round(target.z))), hitType: 'block', source: hit.object };
     }
 
     function updatePlacementPreview(cell) {
-      if (!cell || gameState !== 'build') {
-        placementPreview.visible = false;
-        lastHoveredCell = null;
-        return;
-      }
-      lastHoveredCell = cell;
-      placementPreview.visible = true;
-      placementPreview.position.set(cell.x, cell.y, cell.z);
+      if (!cell || gameState !== 'build') { placementPreview.visible = false; lastHoveredCell = null; return; }
+      lastHoveredCell = cell; placementPreview.visible = true; placementPreview.position.set(cell.x, cell.y, cell.z);
       const occupied = getBlockAtCell(cell.x, cell.y, cell.z);
       placementPreview.material.color.set(occupied && !removeMode ? 0xff6161 : (removeMode ? 0xffcf5a : 0x5be0ff));
       placementPreview.material.opacity = removeMode ? 0.28 : 0.35;
     }
 
     function updateBuildRoam() {
-      if (gameState !== 'build') {
-        buildFocusMarker.visible = false;
-        return;
-      }
-      buildFocusMarker.visible = true;
-      const roamSpeed = 0.22;
+      if (gameState !== 'build') { buildFocusMarker.visible = false; return; }
+      buildFocusMarker.visible = true; const roamSpeed = 0.25;
       buildCameraTarget.x = Math.max(-9, Math.min(9, buildCameraTarget.x + controlVector.x * roamSpeed));
       buildCameraTarget.z = Math.max(-9, Math.min(9, buildCameraTarget.z - controlVector.y * roamSpeed));
       buildFocusMarker.position.set(buildCameraTarget.x, 0.02, buildCameraTarget.z);
     }
 
-    function updateBuildCamera() {
-      const desired = new THREE.Vector3(buildCameraTarget.x + 14, 16, buildCameraTarget.z + 14);
-      camera.position.lerp(desired, 0.08);
-      camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
-    }
-
     function handleCanvasPointer(event) {
-      if (gameState !== 'build') return;
-      if (event.target !== renderer.domElement) return;
-      if (activePointerId !== null && event.pointerId !== activePointerId) return;
-
-      const cell = raycastBuildTarget(event.clientX, event.clientY);
-      updatePlacementPreview(cell);
-      if (!cell) return;
-
+      if (gameState !== 'build' || event.target !== renderer.domElement || (activePointerId !== null && event.pointerId !== activePointerId)) return;
+      const cell = raycastBuildTarget(event.clientX, event.clientY); updatePlacementPreview(cell); if (!cell) return;
       if (event.type === 'pointerdown') {
         activePointerId = event.pointerId;
-        if (removeMode) {
-          removeBlockAtCell(cell.x, cell.y, cell.z);
-        } else {
-          placeBlockAtCell(cell.x, cell.y, cell.z);
-        }
+        if (removeMode) removeBlockAtCell(cell.x, cell.y, cell.z); else placeBlockAtCell(cell.x, cell.y, cell.z);
       }
     }
 
-    function handlePointerUp(event) {
-      if (event.pointerId === activePointerId) activePointerId = null;
-    }
+    function handlePointerUp(event) { if (event.pointerId === activePointerId) activePointerId = null; }
 
     function removeBlockAtCell(x, y, z) {
       const block = getBlockAtCell(x, y, z);
       if (!block) {
-        const topY = getTopBlockYAt(x, z);
-        if (topY < 0) return;
-        const topBlock = getBlockAtCell(x, topY, z);
-        if (!topBlock) return;
-        boatGroup.remove(topBlock);
-        boatBlocks = boatBlocks.filter((b) => b !== topBlock);
-        playerData.inventory[topBlock.userData.type] += 1;
-        updateUI();
-        scheduleCloudSave();
-        return;
+        const topY = getTopBlockYAt(x, z); if (topY < 0) return;
+        const topBlock = getBlockAtCell(x, topY, z); if (!topBlock) return;
+        boatGroup.remove(topBlock); boatBlocks = boatBlocks.filter((b) => b !== topBlock);
+        playerData.inventory[topBlock.userData.type] += 1; updateUI(); scheduleCloudSave(); return;
       }
-      boatGroup.remove(block);
-      boatBlocks = boatBlocks.filter((b) => b !== block);
-      playerData.inventory[block.userData.type] += 1;
-      updateUI();
-      scheduleCloudSave();
+      boatGroup.remove(block); boatBlocks = boatBlocks.filter((b) => b !== block);
+      playerData.inventory[block.userData.type] += 1; updateUI(); scheduleCloudSave();
     }
 
     function placeBlockAtCell(x, y, z) {
-      if (playerData.inventory[selectedBlockType] <= 0) {
-        alert('Bu malzemeden kalmadı! Dükkan kutularından kazanabilirsin.');
-        return;
-      }
-
-      x = Math.max(-9, Math.min(9, Math.round(x)));
-      y = Math.max(0, Math.round(y));
-      z = Math.max(-9, Math.min(9, Math.round(z)));
-
-      if (getBlockAtCell(x, y, z)) {
-        if (y < 19) {
-          const higher = getBlockAtCell(x, y + 1, z);
-          if (higher) return;
-          y += 1;
-        } else {
-          return;
-        }
-      }
-
+      if (playerData.inventory[selectedBlockType] <= 0) { alert('Bu malzemeden kalmadı! Dükkan kutularından kazanabilirsin.'); return; }
+      x = Math.max(-9, Math.min(9, Math.round(x))); y = Math.max(0, Math.round(y)); z = Math.max(-9, Math.min(9, Math.round(z)));
+      if (getBlockAtCell(x, y, z)) { if (y < 19) { const higher = getBlockAtCell(x, y + 1, z); if (higher) return; y += 1; } else return; }
       if (getBlockAtCell(x, y, z)) return;
 
-      const geometry = new THREE.BoxGeometry(1, 1, 1);
-      const material = new THREE.MeshLambertMaterial({ color: blockData[selectedBlockType].color });
-      const block = new THREE.Mesh(geometry, material);
-      block.position.set(x, y, z);
-      block.userData = { type: selectedBlockType, hp: blockData[selectedBlockType].hp };
-      boatGroup.add(block);
-      boatBlocks.push(block);
-      playerData.inventory[selectedBlockType]--;
-      updateUI();
-      scheduleCloudSave();
-      scheduleCloudSave();
+      const geometry = new THREE.BoxGeometry(1, 1, 1); 
+      const material = new THREE.MeshLambertMaterial({ 
+        color: blockData[selectedBlockType].color,
+        transparent: blockData[selectedBlockType].transparent || false,
+        opacity: blockData[selectedBlockType].opacity || 1
+      });
+      const block = new THREE.Mesh(geometry, material); block.position.set(x, y, z); block.userData = { type: selectedBlockType, hp: blockData[selectedBlockType].hp };
+      boatGroup.add(block); boatBlocks.push(block); playerData.inventory[selectedBlockType]--; updateUI(); scheduleCloudSave();
     }
 
     function toggleRemoveMode() {
-      removeMode = !removeMode;
-      const btn = document.getElementById('btn-remove-mode');
+      removeMode = !removeMode; const btn = document.getElementById('btn-remove-mode');
       if (btn) btn.innerText = removeMode ? 'Silme Modu: Açık' : 'Silme Modu';
       if (lastHoveredCell) updatePlacementPreview(lastHoveredCell);
     }
 
     function undoLastBlock() {
-      const block = boatBlocks.pop();
-      if (!block) return;
-      boatGroup.remove(block);
-      playerData.inventory[block.userData.type] += 1;
-      updateUI();
-      scheduleCloudSave();
+      const block = boatBlocks.pop(); if (!block) return;
+      boatGroup.remove(block); playerData.inventory[block.userData.type] += 1; updateUI(); scheduleCloudSave();
     }
 
     function selectBlock(type, element) {
-
-      selectedBlockType = type;
-      document.querySelectorAll('.inv-item').forEach((el) => el.classList.remove('selected'));
-      element.classList.add('selected');
+      selectedBlockType = type; document.querySelectorAll('.inv-item').forEach((el) => el.classList.remove('selected')); element.classList.add('selected');
     }
 
     window.addEventListener('pointerdown', handleCanvasPointer);
     window.addEventListener('pointermove', (event) => {
       if (gameState !== 'build') return;
-      if (event.target !== renderer.domElement) {
-        updatePlacementPreview(null);
-        return;
-      }
-      const cell = raycastBuildTarget(event.clientX, event.clientY);
-      updatePlacementPreview(cell);
+      if (event.target !== renderer.domElement) { updatePlacementPreview(null); return; }
+      const cell = raycastBuildTarget(event.clientX, event.clientY); updatePlacementPreview(cell);
     });
-    window.addEventListener('pointerup', handlePointerUp);
-    window.addEventListener('pointercancel', handlePointerUp);
-    window.addEventListener('pointerleave', () => updatePlacementPreview(null));
+    window.addEventListener('pointerup', handlePointerUp); window.addEventListener('pointercancel', handlePointerUp); window.addEventListener('pointerleave', () => updatePlacementPreview(null));
+
+    function fireCannons() {
+      if(gameState !== 'sail') return;
+      let cannons = boatBlocks.filter(b => b.userData.type === 'cannon');
+      if(cannons.length === 0) return; 
+      
+      cannons.forEach(c => {
+        const projGeo = new THREE.SphereGeometry(0.4);
+        const projMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+        const projectile = new THREE.Mesh(projGeo, projMat);
+        
+        const worldPos = new THREE.Vector3(); c.getWorldPosition(worldPos);
+        projectile.position.copy(worldPos);
+        scene.add(projectile); projectiles.push({ mesh: projectile, speed: 1.5 });
+      });
+    }
+
+    // --- SİNEMATİK SON DEĞİŞKENLERİ ---
+    const ENDING_ZONE = 10; 
+    let endingPhase = 0;
+    let islandGroup = null;
+    let loverMesh = null;
+    let otherGuyMesh = null;
+    let animationTimer = 0;
+    let jumpTime = 0;
+
+    function startEndingAnimation() {
+      gameState = 'ending';
+      endingPhase = 0;
+      animationTimer = 0;
+      jumpTime = 0;
+
+      // 1. Etraftaki TÜM TAŞLARI siliyoruz ki ada kayaların içinde çıkmasın!
+      obstacles.forEach(obs => scene.remove(obs));
+      obstacles = [];
+      projectiles.forEach(p => scene.remove(p.mesh));
+      projectiles = [];
+
+      // 2. UI gizleme (Tamamen kaybolacak)
+      document.getElementById('ui-container').style.opacity = '0';
+      setTimeout(() => document.getElementById('ui-container').style.display = 'none', 500);
+
+      // 3. Ada Oluştur (Suyun altında başlasın: y = -15, yavaşça çıkacak)
+      islandGroup = new THREE.Group();
+      islandGroup.position.set(0, -15, boatGroup.position.z - 50);
+      scene.add(islandGroup);
+
+      const islandGeo = new THREE.CylinderGeometry(15, 15, 2, 32);
+      const islandMat = new THREE.MeshLambertMaterial({ color: 0x228B22 }); // Çimen
+      const islandMesh = new THREE.Mesh(islandGeo, islandMat);
+      islandMesh.position.y = 0;
+      islandGroup.add(islandMesh);
+
+      // Sevgili ve Başka Biri (El ele)
+      const loverType = selectedCharacter === 'male' ? 'female' : 'male';
+      loverMesh = createCharacterModel(loverType);
+      loverMesh.position.set(-0.5, 2, 0); // Birbirlerine çok yakınlar
+      islandGroup.add(loverMesh);
+
+      const otherGuyType = selectedCharacter === 'male' ? 'male' : 'female';
+      otherGuyMesh = createCharacterModel(otherGuyType);
+      otherGuyMesh.position.set(0.5, 2, 0); 
+      islandGroup.add(otherGuyMesh);
+    }
 
     function toggleGameState() {
       if (gameState === 'build') {
-        if (boatBlocks.length === 0) {
-          alert('Önce bir gemi inşa etmelisin!');
-          return;
-        }
-        gameState = 'sail';
-        playerData.hp = 100;
-        inWater = false;
-        document.getElementById('btn-start').innerText = 'Vazgeç / Yeniden Başla';
-        document.getElementById('inventory').style.display = 'none';
+        if (boatBlocks.length === 0) { alert('Önce bir gemi inşa etmelisin!'); return; }
+        clearInterval(buildTimerInterval); document.getElementById('build-timer-panel').style.display = 'none';
+        
+        gameState = 'sail'; playerData.hp = 100; inWater = false;
+        document.getElementById('btn-start').innerText = 'Vazgeç / Yeniden Başla'; document.getElementById('inventory').style.display = 'none';
         document.getElementById('joystick-wrap').style.display = 'block';
+        
+        const hasCannon = boatBlocks.some(b => b.userData.type === 'cannon');
+        if(hasCannon) document.getElementById('btn-fire').style.display = 'block';
+
         if (playerData.hasPlane) document.getElementById('btn-fly').style.display = 'block';
-        gridHelper.visible = false;
-        border.visible = false;
-        document.getElementById('joystick-wrap').style.display = 'block';
-        generateObstacles(1);
-      } else {
-        resetGame();
-      }
+        gridHelper.visible = false; border.visible = false;
+        
+        if(playerCharacterModel) boatGroup.remove(playerCharacterModel);
+        playerCharacterModel = createCharacterModel(selectedCharacter);
+        let highestY = 0; boatBlocks.forEach(b => { if(b.position.y > highestY) highestY = b.position.y; });
+        playerCharacterModel.position.set(0, highestY + 1, 0); boatGroup.add(playerCharacterModel);
+
+        lastGeneratedZ = 0;
+        generateChunk(currentZone); 
+      } else { resetGame(); }
       updateUI();
     }
 
     function resetGame() {
-      gameState = 'build';
-      document.getElementById('btn-start').innerText = 'Denize Açıl!';
-      document.getElementById('inventory').style.display = 'flex';
-      document.getElementById('btn-fly').style.display = 'none';
-      document.getElementById('health-warning').style.display = 'none';
-      document.getElementById('joystick-wrap').style.display = 'block';
-      boatGroup.position.set(0, 0, 0);
-      boatGroup.rotation.set(0, 0, 0);
-      gridHelper.visible = true;
-      border.visible = true;
-      currentZone = 0;
-      isFlying = false;
-      playerData.fuel = 100;
-      clearObstacles();
-      resetJoystick();
-      removeMode = false;
-      const removeBtn = document.getElementById('btn-remove-mode'); if (removeBtn) removeBtn.innerText = 'Silme Modu';
-      placementPreview.visible = false;
-      centerBuildView();
-      updateUI();
-    }
+      gameState = 'build'; document.getElementById('btn-start').innerText = 'Denize Açıl!';
+      document.getElementById('inventory').style.display = 'flex'; document.getElementById('btn-fly').style.display = 'none';
+      document.getElementById('btn-fire').style.display = 'none'; 
+      document.getElementById('health-warning').style.display = 'none'; document.getElementById('joystick-wrap').style.display = 'block';
+      boatGroup.position.set(0, 0, 0); boatGroup.rotation.set(0, 0, 0);
+      gridHelper.visible = true; border.visible = true; currentZone = 0; isFlying = false; playerData.fuel = 100;
+      
+      obstacles.forEach((obs) => scene.remove(obs)); obstacles = [];
+      environmentChunks.forEach((wall) => scene.remove(wall)); environmentChunks = [];
+      projectiles.forEach((p) => scene.remove(p.mesh)); projectiles = [];
+      
+      // Temizlik (Animasyon kalıntıları)
+      if(islandGroup) { scene.remove(islandGroup); islandGroup = null; }
+      
+      scene.background.setHex(biomes[0].sky); scene.fog.color.setHex(biomes[0].sky); waterMaterial.color.setHex(biomes[0].water);
 
-    function generateObstacles(zoneNum) {
-      clearObstacles();
-      const obstacleCount = 15 + zoneNum * 5;
-      for (let i = 0; i < obstacleCount; i++) {
-        const width = 2 + Math.random() * 3;
-        const height = 2 + Math.random() * 4;
-        const geo = new THREE.BoxGeometry(width, height, width);
-        const mat = new THREE.MeshLambertMaterial({ color: 0x555555 });
-        const obs = new THREE.Mesh(geo, mat);
-        obs.position.set((Math.random() - 0.5) * 30, height / 2 - 0.5, boatGroup.position.z - 30 - Math.random() * 80);
-        scene.add(obs);
-        obstacles.push(obs);
+      resetJoystick(); removeMode = false;
+      if(playerCharacterModel) { 
+        if(playerCharacterModel.parent) playerCharacterModel.parent.remove(playerCharacterModel); 
+        playerCharacterModel = null; 
       }
+      
+      const removeBtn = document.getElementById('btn-remove-mode'); if (removeBtn) removeBtn.innerText = 'Silme Modu';
+      placementPreview.visible = false; centerBuildView(); updateUI(); startBuildTimer();
     }
 
-    function clearObstacles() {
-      obstacles.forEach((obs) => scene.remove(obs));
-      obstacles = [];
+    function generateChunk(zoneIndex) {
+      const biome = biomes[zoneIndex % biomes.length];
+      
+      scene.background.setHex(biome.sky);
+      scene.fog.color.setHex(biome.sky);
+      waterMaterial.color.setHex(biome.water);
+
+      const startZ = lastGeneratedZ;
+      const chunkLength = 300; 
+      const endZ = startZ - chunkLength; 
+      
+      const borderGeo = new THREE.BoxGeometry(4, 10, chunkLength); // Duvarları kalınlaştırdık
+      const borderMat = new THREE.MeshLambertMaterial({ color: biome.wall });
+      
+      const leftWall = new THREE.Mesh(borderGeo, borderMat); leftWall.position.set(-16, 5, startZ - (chunkLength/2));
+      scene.add(leftWall); environmentChunks.push(leftWall);
+
+      const rightWall = new THREE.Mesh(borderGeo, borderMat); rightWall.position.set(16, 5, startZ - (chunkLength/2));
+      scene.add(rightWall); environmentChunks.push(rightWall);
+
+      // SADECE SABİT TAŞLAR (Hareketli düşmanlar tamamen kaldırıldı)
+      const obstacleCount = 40 + (zoneIndex * 10);
+      for (let i = 0; i < obstacleCount; i++) {
+        const size = 1.5 + Math.random() * 2.5;
+        const geo = new THREE.DodecahedronGeometry(size);
+        const mat = new THREE.MeshLambertMaterial({ color: biome.rock });
+        const obs = new THREE.Mesh(geo, mat);
+        obs.position.set((Math.random() - 0.5) * 24, size / 2 - 0.5, startZ - Math.random() * chunkLength);
+        obs.userData = { type: 'rock' };
+        scene.add(obs); obstacles.push(obs);
+      }
+      lastGeneratedZ = endZ;
     }
 
     function checkCollisions() {
       if (isFlying) return;
       for (let bIndex = boatBlocks.length - 1; bIndex >= 0; bIndex--) {
-        const block = boatBlocks[bIndex];
-        const blockWorldPos = new THREE.Vector3();
-        block.getWorldPosition(blockWorldPos);
+        const block = boatBlocks[bIndex]; const blockWorldPos = new THREE.Vector3(); block.getWorldPosition(blockWorldPos);
         for (let oIndex = obstacles.length - 1; oIndex >= 0; oIndex--) {
           const obs = obstacles[oIndex];
           if (blockWorldPos.distanceTo(obs.position) < 2) {
             block.userData.hp -= 1;
-            if (block.userData.hp <= 0) {
-              boatGroup.remove(block);
-              boatBlocks.splice(bIndex, 1);
-            }
-            scene.remove(obs);
-            obstacles.splice(oIndex, 1);
-            break;
+            if (block.userData.hp <= 0) { boatGroup.remove(block); boatBlocks.splice(bIndex, 1); }
+            scene.remove(obs); obstacles.splice(oIndex, 1); break;
           }
         }
       }
-
-      if (boatBlocks.length === 0 && !inWater && gameState === 'sail') {
-        inWater = true;
-        document.getElementById('health-warning').style.display = 'block';
-      }
+      if (boatBlocks.length === 0 && !inWater && gameState === 'sail') { inWater = true; document.getElementById('health-warning').style.display = 'block'; }
     }
 
     function activateFlight() {
-      if (playerData.fuel > 0) {
-        isFlying = true;
-        boatGroup.position.y = Math.min(8, boatGroup.position.y + 0.2);
-        playerData.fuel -= 0.5;
-      } else {
-        isFlying = false;
-      }
+      if (playerData.fuel > 0) { isFlying = true; boatGroup.position.y = Math.min(8, boatGroup.position.y + 0.2); playerData.fuel -= 0.5; } 
+      else isFlying = false;
     }
 
     function lockLandscape() {
       const orientation = screen.orientation || screen.mozOrientation || screen.msOrientation;
-      if (orientation && orientation.lock) {
-        orientation.lock('landscape').catch(() => {
-          alert('Tarayıcı ekran kilidine izin vermedi.');
-        });
-      } else {
-        alert('Bu tarayıcı ekran kilidini desteklemiyor.');
-      }
+      if (orientation && orientation.lock) orientation.lock('landscape').catch(() => { alert('Tarayıcı ekran kilidine izin vermedi.'); });
+      else alert('Bu tarayıcı ekran kilidini desteklemiyor.');
     }
 
     function updateMovement() {
       if (gameState !== 'sail') return;
+      
+      // YAVAŞÇA HIZLANMA SİSTEMİ (Zone arttıkça baseSpeed artar, max 1.2)
+      const baseSpeed = Math.min(1.2, 0.35 + (currentZone * 0.05)); 
+      
+      const strafeSpeed = 0.25; const boost = Math.max(0, controlVector.y) * 0.20;
+      boatGroup.position.x += controlVector.x * strafeSpeed; boatGroup.position.z -= baseSpeed + boost;
+      boatGroup.position.x = Math.max(-13, Math.min(13, boatGroup.position.x));
 
-      const baseSpeed = 0.28;
-      const strafeSpeed = 0.22;
-      const boost = Math.max(0, controlVector.y) * 0.18;
+      targetBoatRotation = -controlVector.x * 0.55; boatGroup.rotation.y += (targetBoatRotation - boatGroup.rotation.y) * 0.12;
 
-      boatGroup.position.x += controlVector.x * strafeSpeed;
-      boatGroup.position.z -= baseSpeed + boost;
-      targetBoatRotation = -controlVector.x * 0.55;
-      boatGroup.rotation.y += (targetBoatRotation - boatGroup.rotation.y) * 0.12;
-
-      if (!isFlying && boatGroup.position.y > 0) {
-        boatGroup.position.y -= 0.09;
-      } else if (isFlying) {
-        activateFlight();
-        if (playerData.fuel <= 0) isFlying = false;
-      }
-
-      boatGroup.position.x = Math.max(-9.5, Math.min(9.5, boatGroup.position.x));
+      if (!isFlying && boatGroup.position.y > 0) { boatGroup.position.y -= 0.09; }
+      else if (isFlying) { activateFlight(); if (playerData.fuel <= 0) isFlying = false; }
     }
 
     function updateCamera() {
-      const behind = new THREE.Vector3(0, 11, 18);
-      behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), boatGroup.rotation.y);
+      const behind = new THREE.Vector3(0, 11, 18); behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), boatGroup.rotation.y);
       const desired = boatGroup.position.clone().add(behind);
-      camera.position.lerp(desired, 0.08);
-      camera.lookAt(boatGroup.position.x, boatGroup.position.y + 2, boatGroup.position.z - 5);
+      camera.position.lerp(desired, 0.08); camera.lookAt(boatGroup.position.x, boatGroup.position.y + 2, boatGroup.position.z - 5);
     }
 
     function updateUI() {
-      document.getElementById('money-display').innerText = playerData.money;
-      document.getElementById('wings-display').innerText = playerData.wings;
-      document.getElementById('zone-display').innerText = currentZone;
-      document.getElementById('hp-display').innerText = Math.floor(playerData.hp);
-      document.getElementById('fuel-display').innerText = Math.floor(playerData.fuel);
-      document.getElementById('inv-wood').innerText = playerData.inventory.wood;
-      document.getElementById('inv-stone').innerText = playerData.inventory.stone;
-      document.getElementById('inv-metal').innerText = playerData.inventory.metal;
-      document.getElementById('inv-engine').innerText = playerData.inventory.engine;
-      document.getElementById('inv-seat').innerText = playerData.inventory.seat;
+      document.getElementById('money-display').innerText = playerData.money; document.getElementById('wings-display').innerText = playerData.wings;
+      document.getElementById('zone-display').innerText = currentZone; document.getElementById('hp-display').innerText = Math.floor(playerData.hp);
+      document.getElementById('fuel-display').innerText = Math.floor(playerData.fuel); document.getElementById('inv-wood').innerText = playerData.inventory.wood;
+      document.getElementById('inv-stone').innerText = playerData.inventory.stone; document.getElementById('inv-metal').innerText = playerData.inventory.metal;
+      
+      if(document.getElementById('inv-glass')) document.getElementById('inv-glass').innerText = playerData.inventory.glass || 0;
+      if(document.getElementById('inv-obsidian')) document.getElementById('inv-obsidian').innerText = playerData.inventory.obsidian || 0;
+      if(document.getElementById('inv-gold')) document.getElementById('inv-gold').innerText = playerData.inventory.gold || 0;
+      if(document.getElementById('inv-diamond')) document.getElementById('inv-diamond').innerText = playerData.inventory.diamond || 0;
+      if(document.getElementById('inv-emerald')) document.getElementById('inv-emerald').innerText = playerData.inventory.emerald || 0;
+      if(document.getElementById('inv-neon')) document.getElementById('inv-neon').innerText = playerData.inventory.neon || 0;
+      
+      if(document.getElementById('inv-cannon')) document.getElementById('inv-cannon').innerText = playerData.inventory.cannon || 0;
+      document.getElementById('inv-engine').innerText = playerData.inventory.engine; document.getElementById('inv-seat').innerText = playerData.inventory.seat;
     }
 
     function openShop() { document.getElementById('shop-menu').style.display = 'block'; }
     function openSaveMenu() { document.getElementById('save-menu').style.display = 'block'; renderSaveSlots(); }
-    function closeModals() {
-      document.getElementById('shop-menu').style.display = 'none';
-      document.getElementById('save-menu').style.display = 'none';
-    }
+    function closeModals() { document.getElementById('shop-menu').style.display = 'none'; document.getElementById('save-menu').style.display = 'none'; }
 
     function buyCrate(type) {
-      const cost = type === 'ucuz' ? 50 : 250;
+      let cost = 50; if(type === 'pahali') cost = 300; if(type === 'efsane') cost = 1000;
       if (playerData.money < cost) return alert('Bunun için yeterli paran yok!');
       playerData.money -= cost;
+
       if (type === 'ucuz') {
-        const w = Math.floor(Math.random() * 10) + 5;
-        const s = Math.floor(Math.random() * 5) + 1;
-        playerData.inventory.wood += w;
-        playerData.inventory.stone += s;
-        alert(`Kutudan ${w} Odun ve ${s} Taş çıktı!`);
+        const w = Math.floor(Math.random() * 20) + 15; const s = Math.floor(Math.random() * 10) + 5; const g = Math.floor(Math.random() * 5); 
+        playerData.inventory.wood += w; playerData.inventory.stone += s; if(!playerData.inventory.glass) playerData.inventory.glass = 0; playerData.inventory.glass += g;
+        alert(`Kutudan ${w} Odun, ${s} Taş ve ${g} Cam çıktı!`);
+      } else if (type === 'pahali') {
+        const m = Math.floor(Math.random() * 15) + 5; const e = Math.random() > 0.5 ? 1 : 0; const se = Math.random() > 0.5 ? 1 : 0; const c = Math.random() > 0.3 ? 1 : 0; 
+        const n = Math.floor(Math.random() * 4);
+        playerData.inventory.metal += m; playerData.inventory.engine += e; playerData.inventory.seat += se; 
+        if(!playerData.inventory.cannon) playerData.inventory.cannon = 0; playerData.inventory.cannon += c;
+        if(!playerData.inventory.neon) playerData.inventory.neon = 0; playerData.inventory.neon += n;
+        alert(`Kutudan ${m} Metal, ${e} Motor, ${se} Oturak, ${c} Top ve ${n} Neon çıktı!`);
       } else {
-        const m = Math.floor(Math.random() * 5) + 2;
-        const e = Math.random() > 0.5 ? 1 : 0;
-        const se = Math.random() > 0.5 ? 1 : 0;
-        playerData.inventory.metal += m;
-        playerData.inventory.engine += e;
-        playerData.inventory.seat += se;
-        alert(`Kutudan ${m} Metal, ${e} Motor, ${se} Oturak çıktı!`);
+        const ob = Math.floor(Math.random() * 5) + 3; const go = Math.floor(Math.random() * 8) + 4;
+        const di = Math.floor(Math.random() * 3) + 1; const em = Math.floor(Math.random() * 4) + 1;
+        if(!playerData.inventory.obsidian) playerData.inventory.obsidian = 0; playerData.inventory.obsidian += ob;
+        if(!playerData.inventory.gold) playerData.inventory.gold = 0; playerData.inventory.gold += go;
+        if(!playerData.inventory.diamond) playerData.inventory.diamond = 0; playerData.inventory.diamond += di;
+        if(!playerData.inventory.emerald) playerData.inventory.emerald = 0; playerData.inventory.emerald += em;
+        alert(`WOW! Efsane kutudan ${ob} Obsidyen, ${go} Altın, ${di} Elmas ve ${em} Zümrüt çıktı!`);
       }
-      updateUI();
-      scheduleCloudSave();
+      updateUI(); scheduleCloudSave();
     }
 
     function buyPlane() {
       if (playerData.wings >= 10 && !playerData.hasPlane) {
-        playerData.wings -= 10;
-        playerData.hasPlane = true;
-        document.getElementById('flight-status').style.display = 'block';
+        playerData.wings -= 10; playerData.hasPlane = true; document.getElementById('flight-status').style.display = 'block';
         alert("Uçak modu açıldı. Denize açılınca havalanabilirsin.");
-      } else if (playerData.hasPlane) {
-        alert('Zaten uçağa sahipsin!');
-      } else {
-        alert('10 kanat gerekiyor.');
-      }
-      updateUI();
-      scheduleCloudSave();
+      } else if (playerData.hasPlane) { alert('Zaten uçağa sahipsin!'); } else { alert('10 kanat gerekiyor.'); }
+      updateUI(); scheduleCloudSave();
     }
 
     function renderSaveSlots() {
-      const slotsDiv = document.getElementById('slots');
-      slotsDiv.innerHTML = '';
+      const slotsDiv = document.getElementById('slots'); slotsDiv.innerHTML = '';
       for (let i = 1; i <= 5; i++) {
-        const btn = document.createElement('button');
-        btn.className = 'slot-btn';
+        const btn = document.createElement('button'); btn.className = 'slot-btn';
         btn.innerText = `Kayıt ${i} - ${currentUser ? 'Firebase' : (localStorage.getItem('buildBoatSave' + i) ? '[Dolu]' : '[Boş]')}`;
-        btn.onclick = () => {
-          if (confirm(`Kayıt Yuvası ${i}
-Tamam = Kaydet
-İptal = Yükle`)) {
-            saveShip(i);
-          } else {
-            loadShip(i);
-          }
-        };
+        btn.onclick = () => { if (confirm(`Kayıt Yuvası ${i}\nTamam = Kaydet\nİptal = Yükle`)) { saveShip(i); } else { loadShip(i); } };
         slotsDiv.appendChild(btn);
       }
     }
@@ -1172,14 +934,10 @@ Tamam = Kaydet
       const shipData = boatBlocks.map((b) => ({ x: b.position.x, y: b.position.y, z: b.position.z, type: b.userData.type }));
       const saveData = { ship: shipData, player: playerData, currentZone, selectedCharacter };
       if (currentUser && db) {
-        await db.collection('players').doc(currentUser.uid).collection('saves').doc(String(slotNumber)).set({
-          ...saveData,
-          savedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        await db.collection('players').doc(currentUser.uid).collection('saves').doc(String(slotNumber)).set({ ...saveData, savedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }); 
         alert(`Oyun başarıyla ${slotNumber}. yuvaya Firebase'e kaydedildi!`);
       } else {
-        localStorage.setItem('buildBoatSave' + slotNumber, JSON.stringify(saveData));
-        alert(`Oyun başarıyla ${slotNumber}. yuvaya kaydedildi!`);
+        localStorage.setItem('buildBoatSave' + slotNumber, JSON.stringify(saveData)); alert(`Oyun başarıyla ${slotNumber}. yuvaya kaydedildi!`);
       }
       renderSaveSlots();
     }
@@ -1188,75 +946,167 @@ Tamam = Kaydet
       let parsed = null;
       if (currentUser && db) {
         const snap = await db.collection('players').doc(currentUser.uid).collection('saves').doc(String(slotNumber)).get();
-        if (!snap.exists) return alert('Bu yuva boş!');
-        parsed = snap.data();
+        if (!snap.exists) return alert('Bu yuva boş!'); parsed = snap.data();
       } else {
-        const data = localStorage.getItem('buildBoatSave' + slotNumber);
-        if (!data) return alert('Bu yuva boş!');
-        parsed = JSON.parse(data);
+        const data = localStorage.getItem('buildBoatSave' + slotNumber); if (!data) return alert('Bu yuva boş!'); parsed = JSON.parse(data);
       }
-      playerData = parsed.player || playerData;
-      if (typeof parsed.currentZone === 'number') currentZone = parsed.currentZone;
-      if (parsed.selectedCharacter) selectedCharacter = parsed.selectedCharacter;
-      updateCharacterBadge();
-      updateUI();
-      boatBlocks.forEach((b) => boatGroup.remove(b));
-      boatBlocks = [];
+      playerData = parsed.player || playerData; if (typeof parsed.currentZone === 'number') currentZone = parsed.currentZone;
+      if (parsed.selectedCharacter) selectedCharacter = parsed.selectedCharacter; updateCharacterBadge(); updateUI();
+      boatBlocks.forEach((b) => boatGroup.remove(b)); boatBlocks = [];
       (parsed.ship || []).forEach((saved) => {
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshLambertMaterial({ color: blockData[saved.type].color });
-        const block = new THREE.Mesh(geometry, material);
-        block.position.set(saved.x, saved.y, saved.z);
-        block.userData = { type: saved.type, hp: blockData[saved.type].hp };
-        boatGroup.add(block);
-        boatBlocks.push(block);
+        const geometry = new THREE.BoxGeometry(1, 1, 1); 
+        const material = new THREE.MeshLambertMaterial({ 
+          color: blockData[saved.type].color, transparent: blockData[saved.type].transparent || false, opacity: blockData[saved.type].opacity || 1
+        });
+        const block = new THREE.Mesh(geometry, material); block.position.set(saved.x, saved.y, saved.z); block.userData = { type: saved.type, hp: blockData[saved.type].hp };
+        boatGroup.add(block); boatBlocks.push(block);
       });
       if (playerData.hasPlane) document.getElementById('flight-status').style.display = 'block';
-      alert(`Oyun ${slotNumber}. yuvadan başarıyla yüklendi!`);
-      scheduleCloudSave();
+      alert(`Oyun ${slotNumber}. yuvadan başarıyla yüklendi!`); scheduleCloudSave();
     }
 
     function animate() {
       requestAnimationFrame(animate);
 
-      if (gameState === 'sail') {
-        updateMovement();
-        checkCollisions();
+      // SİNEMATİK SON ANİMASYONU
+      if (gameState === 'ending') {
+        water.position.z = camera.position.z;
+        // Kamera karakteri yakından takip eder
+        camera.position.lerp(new THREE.Vector3(playerCharacterModel ? playerCharacterModel.position.x : boatGroup.position.x, 10, (playerCharacterModel ? playerCharacterModel.position.z : boatGroup.position.z) + 15), 0.05);
+        camera.lookAt(islandGroup.position);
 
-        if (inWater) {
-          playerData.hp -= 0.2;
-          if (playerData.hp <= 0) {
-            alert('Canın bitti! Başlangıca dönüyorsun.');
+        if (endingPhase === 0) {
+          // 1. Ada yavaşça su yüzeyine çıkar (Yavaşça gözükme efekti)
+          if (islandGroup.position.y < 0) {
+             islandGroup.position.y += 0.08;
+          }
+          
+          // Gemi yavaşça adaya yanaşır
+          boatGroup.position.z -= 0.1;
+          
+          if (islandGroup.position.y >= 0 && boatGroup.position.z <= islandGroup.position.z + 15) {
+            islandGroup.position.y = 0; // Sabitle
+            endingPhase = 1;
+            // Karakter gemiden inip karaya çıkar
+            const worldPos = new THREE.Vector3();
+            playerCharacterModel.getWorldPosition(worldPos);
+            boatGroup.remove(playerCharacterModel);
+            scene.add(playerCharacterModel);
+            playerCharacterModel.position.copy(worldPos);
+            playerCharacterModel.position.y = 2; // Çimen hizası
+          }
+        } else if (endingPhase === 1) {
+          // Adaya ve sevgililere doğru yürüme
+          playerCharacterModel.position.z -= 0.08;
+          playerCharacterModel.userData.leftLeg.rotation.x = Math.sin(Date.now() * 0.01) * 0.6;
+          playerCharacterModel.userData.rightLeg.rotation.x = Math.cos(Date.now() * 0.01) * 0.6;
+
+          if (playerCharacterModel.position.z <= islandGroup.position.z + 5) {
+            endingPhase = 2; // Dur ve şok geçir!
+            playerCharacterModel.userData.leftLeg.rotation.x = 0;
+            playerCharacterModel.userData.rightLeg.rotation.x = 0;
+            animationTimer = Date.now();
+          }
+        } else if (endingPhase === 2) {
+          // 2 Saniye boyunca onlara bakar (Şok anı)
+          if (Date.now() - animationTimer > 2000) {
+            endingPhase = 3; 
+            playerCharacterModel.rotation.y = Math.PI / 2; // Sağ tarafa denize doğru döner
+          }
+        } else if (endingPhase === 3) {
+          // Denize atlama (Parabolik uçuş)
+          jumpTime += 0.04;
+          playerCharacterModel.position.x += 0.15; // Sağ tarafa atlar
+          playerCharacterModel.position.y = 2 + Math.sin(jumpTime) * 3 - (jumpTime * jumpTime); // Havaya kalkıp düşme
+          playerCharacterModel.rotation.z -= 0.1; // Takla atar
+          
+          if (playerCharacterModel.position.y < -2) {
+            endingPhase = 4;
+            animationTimer = Date.now();
+          }
+        } else if (endingPhase === 4) {
+          // Suda boğulur, ekranı geri getir ve oyunu bitir
+          if (Date.now() - animationTimer > 2500) {
+            alert("En büyük acı... Oysa ki o kadar yolu onun için gelmiştin. \nOYUN BİTTİ.");
+            document.getElementById('ui-container').style.display = 'block';
+            setTimeout(() => document.getElementById('ui-container').style.opacity = '1', 100);
             resetGame();
           }
         }
-
-        const newZone = Math.floor(Math.abs(boatGroup.position.z) / 100);
-        if (newZone > currentZone) {
-          currentZone = newZone;
-          const reward = 10 * Math.pow(2, currentZone - 1);
-          playerData.money += reward;
-          generateObstacles(currentZone + 1);
-          if (currentZone > 0 && currentZone % 9 === 0) {
-            playerData.wings += 1;
-            alert('Harika! 9. bölgeyi geçtin ve 1 kanat kazandın!');
-          }
-          scheduleCloudSave();
-        }
-
-        updateCamera();
-        if (playerData.fuel <= 0) {
-          isFlying = false;
-        }
-      } else {
-        updateBuildRoam();
-        const desired = new THREE.Vector3(buildCameraTarget.x + 14, 16, buildCameraTarget.z + 14);
-        camera.position.lerp(desired, 0.08);
-        camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
+        renderer.render(scene, camera);
+        return; // Normal oyun döngüsüne girme
       }
 
-      updateUI();
-      renderer.render(scene, camera);
+      // NORMAL OYUN DÖNGÜSÜ (SAIL)
+      if (gameState === 'sail') {
+        updateMovement(); checkCollisions();
+        water.position.z = camera.position.z;
+
+        const timeFactor = Math.abs(boatGroup.position.z) * 0.005;
+        const lightInt = 0.4 + (Math.sin(timeFactor) + 1) * 0.3; 
+        ambientLight.intensity = lightInt;
+
+        if (inWater) {
+          playerData.hp -= 0.2; if(playerCharacterModel) playerCharacterModel.position.y -= 0.05; 
+          if (playerData.hp <= 0) { alert('Canın bitti! Başlangıca dönüyorsun.'); resetGame(); }
+        } else if (playerCharacterModel) {
+          const speed = Math.abs(controlVector.x) + Math.abs(controlVector.y) + 0.1;
+          const time = Date.now() * 0.005 * speed;
+          playerCharacterModel.userData.leftLeg.rotation.x = Math.sin(time) * 0.6;
+          playerCharacterModel.userData.rightLeg.rotation.x = Math.cos(time) * 0.6;
+        }
+
+        projectiles.forEach((p, pIdx) => {
+          p.mesh.position.z -= p.speed; 
+          let hit = false;
+          for(let oIdx = obstacles.length - 1; oIdx >= 0; oIdx--) {
+            if(p.mesh.position.distanceTo(obstacles[oIdx].position) < 3) {
+              scene.remove(obstacles[oIdx]); obstacles.splice(oIdx, 1);
+              scene.remove(p.mesh); projectiles.splice(pIdx, 1); hit = true; break;
+            }
+          }
+          if(!hit && p.mesh.position.distanceTo(boatGroup.position) > 100) {
+             scene.remove(p.mesh); projectiles.splice(pIdx, 1);
+          }
+        });
+
+        if (boatGroup.position.z - 150 < lastGeneratedZ) { generateChunk(currentZone + 1); }
+
+        obstacles = obstacles.filter(obs => {
+          if (obs.position.z > boatGroup.position.z + 50) { scene.remove(obs); return false; } return true;
+        });
+        environmentChunks = environmentChunks.filter(wall => {
+          if (wall.position.z > boatGroup.position.z + 400) { scene.remove(wall); return false; } return true;
+        });
+
+        const newZone = Math.floor(Math.abs(boatGroup.position.z) / 300);
+        if (newZone > currentZone) {
+          currentZone = newZone; 
+          
+          // --- BÖLÜM 10 KONTROLÜ (SİNEMATİĞE GEÇİŞ) ---
+          if (currentZone >= ENDING_ZONE) {
+            startEndingAnimation();
+            return;
+          }
+
+          const reward = 15 + (currentZone * 5); 
+          playerData.money += reward;
+          
+          // SAYFA MESAJI (ALERT) KALDIRILDI! SADECE SESSİZCE KANAT VERİLİYOR
+          if (currentZone > 0 && currentZone % 5 === 0) { 
+             playerData.wings += 1; 
+          }
+          
+          scheduleCloudSave();
+        }
+        updateCamera(); if (playerData.fuel <= 0) { isFlying = false; }
+      } else if (gameState === 'build') {
+        updateBuildRoam();
+        const desired = new THREE.Vector3(buildCameraTarget.x + 14, 16, buildCameraTarget.z + 14);
+        camera.position.lerp(desired, 0.08); camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
+      }
+
+      updateUI(); renderer.render(scene, camera);
     }
 
     function syncOrientationHint() {
@@ -1264,28 +1114,24 @@ Tamam = Kaydet
       document.getElementById('rotate-hint').style.display = isPortrait ? 'block' : 'none';
     }
 
-    updateUI();
-    syncOrientationHint();
-    animate();
+    updateUI(); syncOrientationHint(); animate();
 
     window.addEventListener('keydown', (event) => {
       if (event.key === 'r' || event.key === 'R') toggleRemoveMode();
       if (event.key === 'z' && (event.ctrlKey || event.metaKey)) undoLastBlock();
+      if (event.key === ' ') fireCannons(); 
       if (gameState === 'build') {
         if (event.key === 'w' || event.key === 'ArrowUp') buildCameraTarget.z -= 0.6;
         if (event.key === 's' || event.key === 'ArrowDown') buildCameraTarget.z += 0.6;
         if (event.key === 'a' || event.key === 'ArrowLeft') buildCameraTarget.x -= 0.6;
         if (event.key === 'd' || event.key === 'ArrowRight') buildCameraTarget.x += 0.6;
-        buildCameraTarget.x = Math.max(-9, Math.min(9, buildCameraTarget.x));
-        buildCameraTarget.z = Math.max(-9, Math.min(9, buildCameraTarget.z));
+        buildCameraTarget.x = Math.max(-9, Math.min(9, buildCameraTarget.x)); buildCameraTarget.z = Math.max(-9, Math.min(9, buildCameraTarget.z));
       }
     });
 
     window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      syncOrientationHint();
+      camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight); syncOrientationHint();
     });
   </script>
 </body>
