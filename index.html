@@ -302,6 +302,10 @@
       </div>
       <input id="auth-username" class="field" type="text" placeholder="Kullanıcı adı" autocomplete="username" />
       <input id="auth-password" class="field" type="password" placeholder="Şifre" autocomplete="current-password" />
+      <select id="character-select" class="field" style="appearance:none;">
+        <option value="male">Karakter: Erkek</option>
+        <option value="female">Karakter: Kız</option>
+      </select>
       <div class="auth-actions">
         <button id="auth-submit" onclick="submitAuth()">Giriş Yap</button>
         <button class="mini-btn" onclick="fillDemo()">Doldur</button>
@@ -327,9 +331,11 @@
       <div id="accountBox" class="panel">
         <div class="stat-line">Hesap</div>
         <div class="subtle" id="current-user-text">Misafir</div>
+        <div class="subtle" id="current-character-text">Karakter: -</div>
         <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px; flex-wrap:wrap;">
           <button class="mini-btn" id="btn-logout" onclick="logoutUser()">Çıkış</button>
           <button class="mini-btn" id="btn-orient" onclick="lockLandscape()">Yatay Mod</button>
+          <button class="mini-btn" id="btn-center" onclick="centerBuildView()">Merkezle</button>
         </div>
       </div>
     </div>
@@ -434,6 +440,7 @@
       }
       const username = document.getElementById('auth-username').value.trim();
       const password = document.getElementById('auth-password').value;
+      const character = document.getElementById('character-select').value || 'male';
       if (username.length < 3) return setAuthMessage('Kullanıcı adı en az 3 karakter olsun.', true);
       if (password.length < 6) return setAuthMessage('Şifre en az 6 karakter olsun.', true);
 
@@ -449,6 +456,7 @@
               await db.collection('players').doc(result.user.uid).set({
                 username,
                 email,
+                character,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
               }, { merge: true });
@@ -461,6 +469,7 @@
             await db.collection('players').doc(result.user.uid).set({
               username: result.user.displayName || username,
               email,
+              character,
               lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
           }
@@ -489,8 +498,85 @@
       auth.signOut();
     }
 
+    let selectedCharacter = 'male';
+    let buildCameraTarget = new THREE.Vector3(0, 0, 0);
+    let cloudSaveTimer = null;
+    let cloudSavePending = false;
+
+    function updateCharacterBadge() {
+      const el = document.getElementById('current-character-text');
+      if (el) el.innerText = `Karakter: ${selectedCharacter === 'female' ? 'Kız' : 'Erkek'}`;
+    }
+
+    function centerBuildView() {
+      buildCameraTarget.set(0, 0, 0);
+      updatePlacementPreview(lastHoveredCell);
+    }
+
+    function scheduleCloudSave() {
+      if (!currentUser || !db) return;
+      cloudSavePending = true;
+      if (cloudSaveTimer) clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(() => {
+        if (cloudSavePending) saveGameToCloud().catch(console.warn);
+      }, 1200);
+    }
+
+    async function saveGameToCloud() {
+      if (!currentUser || !db) return;
+      cloudSavePending = false;
+      const ship = boatBlocks.map((b) => ({
+        x: b.position.x,
+        y: b.position.y,
+        z: b.position.z,
+        type: b.userData.type
+      }));
+      await db.collection('players').doc(currentUser.uid).set({
+        username: currentUser.displayName || currentUser.email || 'Oyuncu',
+        character: selectedCharacter,
+        playerData,
+        currentZone,
+        gameState,
+        ship,
+        savedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+
+    async function loadGameFromCloud(user) {
+      if (!db || !user) return;
+      try {
+        const snap = await db.collection('players').doc(user.uid).get();
+        if (!snap.exists) return;
+        const data = snap.data() || {};
+        if (data.character) {
+          selectedCharacter = data.character;
+          const sel = document.getElementById('character-select');
+          if (sel) sel.value = selectedCharacter;
+        }
+        if (data.playerData) playerData = { ...playerData, ...data.playerData };
+        if (typeof data.currentZone === 'number') currentZone = data.currentZone;
+        if (Array.isArray(data.ship)) {
+          boatBlocks.forEach((b) => boatGroup.remove(b));
+          boatBlocks = [];
+          data.ship.forEach((saved) => {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshLambertMaterial({ color: blockData[saved.type].color });
+            const block = new THREE.Mesh(geometry, material);
+            block.position.set(saved.x, saved.y, saved.z);
+            block.userData = { type: saved.type, hp: blockData[saved.type].hp };
+            boatGroup.add(block);
+            boatBlocks.push(block);
+          });
+        }
+        updateCharacterBadge();
+        updateUI();
+      } catch (e) {
+        console.warn('Cloud load failed', e);
+      }
+    }
+
     if (auth) {
-      auth.onAuthStateChanged((user) => {
+      auth.onAuthStateChanged(async (user) => {
         currentUser = user || null;
         const overlay = document.getElementById('auth-overlay');
         const nameText = document.getElementById('current-user-text');
@@ -501,10 +587,13 @@
           nameText.innerText = display;
           loginStatus.innerText = 'Giriş yapıldı';
           setAuthMessage('');
+          await loadGameFromCloud(user);
+          updateCharacterBadge();
         } else {
           overlay.style.display = 'flex';
           nameText.innerText = 'Misafir';
           loginStatus.innerText = 'Giriş bekleniyor';
+          document.getElementById('current-character-text').innerText = 'Karakter: -';
         }
       });
     }
@@ -592,6 +681,13 @@ let lastHoveredCell = null;
     placementPreview.visible = false;
     placementPreview.renderOrder = 999;
     scene.add(placementPreview);
+
+    const buildFocusMarker = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.26, 0.26, 0.05, 18),
+      new THREE.MeshBasicMaterial({ color: 0xffd966, transparent: true, opacity: 0.8 })
+    );
+    buildFocusMarker.rotation.x = Math.PI / 2;
+    scene.add(buildFocusMarker);
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -716,6 +812,24 @@ let lastHoveredCell = null;
       placementPreview.material.opacity = removeMode ? 0.28 : 0.35;
     }
 
+    function updateBuildRoam() {
+      if (gameState !== 'build') {
+        buildFocusMarker.visible = false;
+        return;
+      }
+      buildFocusMarker.visible = true;
+      const roamSpeed = 0.22;
+      buildCameraTarget.x = Math.max(-9, Math.min(9, buildCameraTarget.x + controlVector.x * roamSpeed));
+      buildCameraTarget.z = Math.max(-9, Math.min(9, buildCameraTarget.z - controlVector.y * roamSpeed));
+      buildFocusMarker.position.set(buildCameraTarget.x, 0.02, buildCameraTarget.z);
+    }
+
+    function updateBuildCamera() {
+      const desired = new THREE.Vector3(buildCameraTarget.x + 14, 16, buildCameraTarget.z + 14);
+      camera.position.lerp(desired, 0.08);
+      camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
+    }
+
     function handleCanvasPointer(event) {
       if (gameState !== 'build') return;
       if (event.target !== renderer.domElement) return;
@@ -750,12 +864,14 @@ let lastHoveredCell = null;
         boatBlocks = boatBlocks.filter((b) => b !== topBlock);
         playerData.inventory[topBlock.userData.type] += 1;
         updateUI();
+        scheduleCloudSave();
         return;
       }
       boatGroup.remove(block);
       boatBlocks = boatBlocks.filter((b) => b !== block);
       playerData.inventory[block.userData.type] += 1;
       updateUI();
+      scheduleCloudSave();
     }
 
     function placeBlockAtCell(x, y, z) {
@@ -789,6 +905,8 @@ let lastHoveredCell = null;
       boatBlocks.push(block);
       playerData.inventory[selectedBlockType]--;
       updateUI();
+      scheduleCloudSave();
+      scheduleCloudSave();
     }
 
     function toggleRemoveMode() {
@@ -804,6 +922,7 @@ let lastHoveredCell = null;
       boatGroup.remove(block);
       playerData.inventory[block.userData.type] += 1;
       updateUI();
+      scheduleCloudSave();
     }
 
     function selectBlock(type, element) {
@@ -838,6 +957,7 @@ let lastHoveredCell = null;
         inWater = false;
         document.getElementById('btn-start').innerText = 'Vazgeç / Yeniden Başla';
         document.getElementById('inventory').style.display = 'none';
+        document.getElementById('joystick-wrap').style.display = 'block';
         if (playerData.hasPlane) document.getElementById('btn-fly').style.display = 'block';
         gridHelper.visible = false;
         border.visible = false;
@@ -855,7 +975,7 @@ let lastHoveredCell = null;
       document.getElementById('inventory').style.display = 'flex';
       document.getElementById('btn-fly').style.display = 'none';
       document.getElementById('health-warning').style.display = 'none';
-      document.getElementById('joystick-wrap').style.display = 'none';
+      document.getElementById('joystick-wrap').style.display = 'block';
       boatGroup.position.set(0, 0, 0);
       boatGroup.rotation.set(0, 0, 0);
       gridHelper.visible = true;
@@ -868,6 +988,7 @@ let lastHoveredCell = null;
       removeMode = false;
       const removeBtn = document.getElementById('btn-remove-mode'); if (removeBtn) removeBtn.innerText = 'Silme Modu';
       placementPreview.visible = false;
+      centerBuildView();
       updateUI();
     }
 
@@ -1009,6 +1130,7 @@ let lastHoveredCell = null;
         alert(`Kutudan ${m} Metal, ${e} Motor, ${se} Oturak çıktı!`);
       }
       updateUI();
+      scheduleCloudSave();
     }
 
     function buyPlane() {
@@ -1023,6 +1145,7 @@ let lastHoveredCell = null;
         alert('10 kanat gerekiyor.');
       }
       updateUI();
+      scheduleCloudSave();
     }
 
     function renderSaveSlots() {
@@ -1031,9 +1154,11 @@ let lastHoveredCell = null;
       for (let i = 1; i <= 5; i++) {
         const btn = document.createElement('button');
         btn.className = 'slot-btn';
-        btn.innerText = `Kayıt ${i} - ${localStorage.getItem('buildBoatSave' + i) ? '[Dolu]' : '[Boş]'}`;
+        btn.innerText = `Kayıt ${i} - ${currentUser ? 'Firebase' : (localStorage.getItem('buildBoatSave' + i) ? '[Dolu]' : '[Boş]')}`;
         btn.onclick = () => {
-          if (confirm(`Kayıt Yuvası ${i}\nTamam = Kaydet\nİptal = Yükle`)) {
+          if (confirm(`Kayıt Yuvası ${i}
+Tamam = Kaydet
+İptal = Yükle`)) {
             saveShip(i);
           } else {
             loadShip(i);
@@ -1043,23 +1168,41 @@ let lastHoveredCell = null;
       }
     }
 
-    function saveShip(slotNumber) {
+    async function saveShip(slotNumber) {
       const shipData = boatBlocks.map((b) => ({ x: b.position.x, y: b.position.y, z: b.position.z, type: b.userData.type }));
-      const saveData = { ship: shipData, player: playerData };
-      localStorage.setItem('buildBoatSave' + slotNumber, JSON.stringify(saveData));
-      alert(`Oyun başarıyla ${slotNumber}. yuvaya kaydedildi!`);
+      const saveData = { ship: shipData, player: playerData, currentZone, selectedCharacter };
+      if (currentUser && db) {
+        await db.collection('players').doc(currentUser.uid).collection('saves').doc(String(slotNumber)).set({
+          ...saveData,
+          savedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        alert(`Oyun başarıyla ${slotNumber}. yuvaya Firebase'e kaydedildi!`);
+      } else {
+        localStorage.setItem('buildBoatSave' + slotNumber, JSON.stringify(saveData));
+        alert(`Oyun başarıyla ${slotNumber}. yuvaya kaydedildi!`);
+      }
       renderSaveSlots();
     }
 
-    function loadShip(slotNumber) {
-      const data = localStorage.getItem('buildBoatSave' + slotNumber);
-      if (!data) return alert('Bu yuva boş!');
-      const parsed = JSON.parse(data);
-      playerData = parsed.player;
+    async function loadShip(slotNumber) {
+      let parsed = null;
+      if (currentUser && db) {
+        const snap = await db.collection('players').doc(currentUser.uid).collection('saves').doc(String(slotNumber)).get();
+        if (!snap.exists) return alert('Bu yuva boş!');
+        parsed = snap.data();
+      } else {
+        const data = localStorage.getItem('buildBoatSave' + slotNumber);
+        if (!data) return alert('Bu yuva boş!');
+        parsed = JSON.parse(data);
+      }
+      playerData = parsed.player || playerData;
+      if (typeof parsed.currentZone === 'number') currentZone = parsed.currentZone;
+      if (parsed.selectedCharacter) selectedCharacter = parsed.selectedCharacter;
+      updateCharacterBadge();
       updateUI();
       boatBlocks.forEach((b) => boatGroup.remove(b));
       boatBlocks = [];
-      parsed.ship.forEach((saved) => {
+      (parsed.ship || []).forEach((saved) => {
         const geometry = new THREE.BoxGeometry(1, 1, 1);
         const material = new THREE.MeshLambertMaterial({ color: blockData[saved.type].color });
         const block = new THREE.Mesh(geometry, material);
@@ -1070,6 +1213,7 @@ let lastHoveredCell = null;
       });
       if (playerData.hasPlane) document.getElementById('flight-status').style.display = 'block';
       alert(`Oyun ${slotNumber}. yuvadan başarıyla yüklendi!`);
+      scheduleCloudSave();
     }
 
     function animate() {
@@ -1097,6 +1241,7 @@ let lastHoveredCell = null;
             playerData.wings += 1;
             alert('Harika! 9. bölgeyi geçtin ve 1 kanat kazandın!');
           }
+          scheduleCloudSave();
         }
 
         updateCamera();
@@ -1104,8 +1249,10 @@ let lastHoveredCell = null;
           isFlying = false;
         }
       } else {
-        camera.position.lerp(new THREE.Vector3(0, 12, 18), 0.04);
-        camera.lookAt(0, 0, 0);
+        updateBuildRoam();
+        const desired = new THREE.Vector3(buildCameraTarget.x + 14, 16, buildCameraTarget.z + 14);
+        camera.position.lerp(desired, 0.08);
+        camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
       }
 
       updateUI();
@@ -1124,6 +1271,14 @@ let lastHoveredCell = null;
     window.addEventListener('keydown', (event) => {
       if (event.key === 'r' || event.key === 'R') toggleRemoveMode();
       if (event.key === 'z' && (event.ctrlKey || event.metaKey)) undoLastBlock();
+      if (gameState === 'build') {
+        if (event.key === 'w' || event.key === 'ArrowUp') buildCameraTarget.z -= 0.6;
+        if (event.key === 's' || event.key === 'ArrowDown') buildCameraTarget.z += 0.6;
+        if (event.key === 'a' || event.key === 'ArrowLeft') buildCameraTarget.x -= 0.6;
+        if (event.key === 'd' || event.key === 'ArrowRight') buildCameraTarget.x += 0.6;
+        buildCameraTarget.x = Math.max(-9, Math.min(9, buildCameraTarget.x));
+        buildCameraTarget.z = Math.max(-9, Math.min(9, buildCameraTarget.z));
+      }
     });
 
     window.addEventListener('resize', () => {
