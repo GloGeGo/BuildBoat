@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>3D Gemi İnşa Oyunu - Efsanevi Sürüm</title>
+  <title>3D Gemi İnşa Oyunu - Uzaylılarla Kahve</title>
   <style>
+    /* TEMEL DEĞİŞKENLER VE ARAYÜZ AYARLARI */
     :root {
       --panel: rgba(10, 16, 28, 0.4); 
       --line: rgba(255, 255, 255, 0.05);
@@ -13,178 +14,294 @@
       --warn: #ffcf5a;
       --bad: #ff6161;
     }
+    
     html, body {
-      margin: 0; width: 100%; height: 100%; overflow: hidden;
+      margin: 0; 
+      width: 100%; 
+      height: 100%; 
+      overflow: hidden;
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
       background: linear-gradient(180deg, #7fd3ff 0%, #87CEEB 35%, #5ec4ff 100%);
-      user-select: none; -webkit-user-select: none; touch-action: none;
+      user-select: none; 
+      -webkit-user-select: none; 
+      touch-action: none;
     }
-    canvas { display: block; width: 100vw; height: 100vh; }
+    
+    canvas { 
+      display: block; 
+      width: 100vw; 
+      height: 100vh; 
+    }
 
-    #ui-container { position: absolute; inset: 0; pointer-events: none; transition: opacity 0.5s; }
+    #ui-container { 
+      position: absolute; 
+      inset: 0; 
+      pointer-events: none; 
+      transition: opacity 0.5s; 
+    }
 
     .panel {
-      background: var(--panel); color: #fff; border: 1px solid var(--line);
-      backdrop-filter: blur(5px); border-radius: 12px; pointer-events: auto;
+      background: var(--panel); 
+      color: #fff; 
+      border: 1px solid var(--line);
+      backdrop-filter: blur(5px); 
+      border-radius: 12px; 
+      pointer-events: auto;
     }
 
+    /* ÜST BAR VE İSTATİSTİKLER */
     #topbar {
-      position: absolute; top: 10px; left: 10px; right: 10px;
-      display: flex; gap: 10px; align-items: stretch; justify-content: space-between; pointer-events: none;
+      position: absolute; 
+      top: 10px; 
+      left: 10px; 
+      right: 10px;
+      display: flex; 
+      gap: 10px; 
+      align-items: stretch; 
+      justify-content: space-between; 
+      pointer-events: none;
     }
 
-    #stats { padding: 6px 10px; min-width: 120px; max-width: 200px; font-size: 11px; }
-    #accountBox { display: none !important; } 
+    #stats { 
+      padding: 6px 10px; 
+      min-width: 120px; 
+      max-width: 200px; 
+      font-size: 11px; 
+    }
 
-    .stat-line { margin-bottom: 2px; font-weight: 600; font-size: 11px; }
-    .subtle { display: none; } 
+    .stat-line { 
+      margin-bottom: 2px; 
+      font-weight: 600; 
+      font-size: 11px; 
+    }
     
     #health-warning {
-      color: var(--bad); display: none; font-weight: 800; margin-top: 4px; animation: blink 0.9s infinite;
+      color: var(--bad); 
+      display: none; 
+      font-weight: 800; 
+      margin-top: 4px; 
+      animation: blink 0.9s infinite;
     }
-    @keyframes blink { 50% { opacity: 0.15; } }
+    
+    @keyframes blink { 
+      50% { opacity: 0.15; } 
+    }
 
+    /* YAN BUTONLAR VE AKSİYONLAR */
     #buttons {
-      position: absolute; top: 80px; right: 10px; display: flex; flex-direction: column; gap: 6px; pointer-events: auto;
+      position: absolute; 
+      top: 80px; 
+      right: 10px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 6px; 
+      pointer-events: auto;
     }
+    
     button, .mini-btn {
-      appearance: none; border: 0; border-radius: 8px; padding: 6px 10px; font-size: 11px;
-      background: rgba(30, 40, 64, 0.8); color: white; font-weight: 700;
-      cursor: pointer; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(4px);
+      appearance: none; 
+      border: 0; 
+      border-radius: 8px; 
+      padding: 6px 10px; 
+      font-size: 11px;
+      background: rgba(30, 40, 64, 0.8); 
+      color: white; 
+      font-weight: 700;
+      cursor: pointer; 
+      border: 1px solid rgba(255,255,255,0.1); 
+      backdrop-filter: blur(4px);
     }
-    button:active, .mini-btn:active { transform: scale(0.95); }
-    #btn-start { background: linear-gradient(180deg, rgba(255,106,94,0.8) 0%, rgba(216,63,53,0.8) 100%); }
-    #btn-fly { background: linear-gradient(180deg, rgba(38,198,218,0.8) 0%, rgba(0,151,167,0.8) 100%); display: none; }
-    #btn-orient { background: linear-gradient(180deg, rgba(138,125,255,0.8) 0%, rgba(84,71,214,0.8) 100%); }
-    #btn-camera { background: linear-gradient(180deg, rgba(255,159,67,0.8) 0%, rgba(234,127,29,0.8) 100%); }
+    
+    button:active, .mini-btn:active { 
+      transform: scale(0.95); 
+    }
+    
+    #btn-start { 
+      background: linear-gradient(180deg, rgba(255,106,94,0.8) 0%, rgba(216,63,53,0.8) 100%); 
+    }
+    
+    #btn-camera { 
+      background: linear-gradient(180deg, rgba(255,159,67,0.8) 0%, rgba(234,127,29,0.8) 100%); 
+    }
 
+    /* ATEŞ VE TÜMÜNÜ SİL BUTONLARI */
     #btn-fire {
-      position: absolute; bottom: 22px; right: 22px; width: 60px; height: 60px;
-      border-radius: 50%; background: radial-gradient(circle at top, #ff4e50, #f9d423);
-      color: #000; font-weight: 900; font-size: 12px; display: none; pointer-events: auto;
-      box-shadow: 0 4px 15px rgba(255, 78, 80, 0.5); z-index: 50; border: 2px solid rgba(255,255,255,0.4);
+      position: absolute; 
+      bottom: 85px; 
+      right: 22px; 
+      width: 60px; 
+      height: 60px;
+      border-radius: 50%; 
+      background: radial-gradient(circle at top, #ff4e50, #f9d423);
+      color: #000; 
+      font-weight: 900; 
+      font-size: 12px; 
+      display: none; 
+      pointer-events: auto;
+      box-shadow: 0 4px 15px rgba(255, 78, 80, 0.5); 
+      z-index: 50; 
+      border: 2px solid rgba(255,255,255,0.4);
     }
-    #btn-fire:active { transform: scale(0.9); }
+    
+    #btn-clear-all {
+      position: absolute; 
+      bottom: 85px; 
+      left: 22px; 
+      padding: 12px 20px; 
+      font-size: 12px;
+      background: linear-gradient(180deg, #d32f2f 0%, #9a0007 100%);
+      box-shadow: 0 4px 15px rgba(211, 47, 47, 0.5);
+      display: none; 
+      pointer-events: auto; 
+      z-index: 50;
+    }
 
+    /* ENVANTER (ÇOKLU EŞYA SİSTEMİ) */
     #inventory {
-      position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); width: min(96vw, 600px);
-      display: flex; gap: 6px; overflow-x: auto; padding: 6px; border-radius: 12px;
-      background: rgba(8, 12, 20, 0.6); pointer-events: auto; border: 1px solid rgba(255,255,255,0.1);
+      position: absolute; 
+      left: 50%; 
+      bottom: 12px; 
+      transform: translateX(-50%); 
+      width: min(96vw, 700px);
+      display: flex; 
+      gap: 6px; 
+      overflow-x: auto; 
+      padding: 6px; 
+      border-radius: 12px;
+      background: rgba(8, 12, 20, 0.6); 
+      pointer-events: auto; 
+      border: 1px solid rgba(255,255,255,0.1);
       backdrop-filter: blur(5px);
     }
+    
     .inv-item {
-      min-width: 50px; min-height: 50px; background: rgba(255,255,255,0.1); color: #fff;
-      display: flex; align-items: center; justify-content: center; border-radius: 8px;
-      cursor: pointer; font-size: 9px; text-align: center; flex-direction: column; 
-      padding: 4px; flex: 0 0 auto; border: 1px solid transparent;
+      min-width: 50px; 
+      min-height: 50px; 
+      background: rgba(255,255,255,0.1); 
+      color: #fff;
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      border-radius: 8px;
+      cursor: pointer; 
+      font-size: 9px; 
+      text-align: center; 
+      flex-direction: column; 
+      padding: 4px; 
+      flex: 0 0 auto; 
+      border: 1px solid transparent;
     }
+    
     .inv-item.selected {
-      border-color: #ffd966; background: rgba(255, 217, 102, 0.2);
+      border-color: #ffd966; 
+      background: rgba(255, 217, 102, 0.2);
     }
-    .inv-count { margin-top: 2px; font-size: 11px; font-weight: 800; color: #ffd966; }
+    
+    .inv-count { 
+      margin-top: 2px; 
+      font-size: 11px; 
+      font-weight: 800; 
+      color: #ffd966; 
+    }
 
+    /* PENCERELER (MODAL) */
     .modal, .overlay {
-      display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-      width: min(92vw, 400px); max-height: 80vh; overflow-y: auto; background: rgba(17, 24, 39, 0.95); color: white; 
-      padding: 16px; border-radius: 16px; pointer-events: auto; z-index: 40; 
-      border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+      display: none; 
+      position: absolute; 
+      left: 50%; 
+      top: 50%; 
+      transform: translate(-50%, -50%);
+      width: min(92vw, 400px); 
+      max-height: 80vh; 
+      overflow-y: auto; 
+      background: rgba(17, 24, 39, 0.95); 
+      color: white; 
+      padding: 16px; 
+      border-radius: 16px; 
+      pointer-events: auto; 
+      z-index: 40; 
+      border: 1px solid rgba(255,255,255,0.1); 
+      backdrop-filter: blur(10px);
     }
-    .modal::-webkit-scrollbar { width: 4px; }
-    .modal::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
 
-    #auth-overlay {
-      display: flex; align-items: center; justify-content: center; position: absolute; inset: 0; z-index: 80;
-      background: radial-gradient(circle at top, rgba(255,255,255,0.1), rgba(0,0,0,0.5)); backdrop-filter: blur(8px); pointer-events: auto;
+    #shop-menu h3 { 
+      margin-top: 0; 
+      font-size: 16px;
     }
-    #auth-card {
-      width: min(92vw, 380px); background: rgba(10, 16, 28, 0.85); color: #fff; border-radius: 20px;
-      border: 1px solid rgba(255,255,255,0.1); padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    
+    .crate-btn { 
+      width: 100%; 
+      margin: 4px 0; 
+      padding: 10px; 
+      border-radius: 10px; 
+      background: rgba(255,255,255,0.08); 
     }
-    #auth-card h1 { margin: 0 0 8px; font-size: 20px; }
-    #auth-card p { margin: 0 0 14px; opacity: 0.8; font-size: 12px; }
-    .auth-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-    .tab-btn { flex: 1; background: rgba(255,255,255,0.08); padding: 10px;}
-    .tab-btn.active { background: linear-gradient(180deg, #5be0ff 0%, #0ea5e9 100%); color: #000; }
-    .field {
-      width: 100%; box-sizing: border-box; margin: 6px 0; padding: 12px; border-radius: 10px;
-      border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: #fff; font-size: 13px; outline: none;
-    }
-    .auth-actions { display: flex; gap: 8px; margin-top: 10px; }
-    .auth-actions button { flex: 1; padding: 12px; }
-    #auth-msg { margin-top: 10px; font-size: 12px; color: #ffd966; }
 
-    #shop-menu h3, #save-menu h3 { margin-top: 0; font-size: 16px;}
-    .slot-btn, .crate-btn { width: 100%; margin: 4px 0; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.08); }
-    .crate-btn { background: linear-gradient(180deg, rgba(255,159,67,0.8) 0%, rgba(234,127,29,0.8) 100%); }
-
+    /* JOYSTICK MOBİL KONTROLLERİ */
     #joystick-wrap {
-      position: absolute; left: 20px; bottom: 80px; width: 100px; height: 100px; display: block;
-      pointer-events: auto; z-index: 30; opacity: 0.6;
+      position: absolute; 
+      left: 20px; 
+      bottom: 100px; 
+      width: 100px; 
+      height: 100px; 
+      display: block;
+      pointer-events: auto; 
+      z-index: 30; 
+      opacity: 0.6;
     }
+    
     #joystick-base {
-      position: absolute; inset: 0; border-radius: 50%; background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(4px);
+      position: absolute; 
+      inset: 0; 
+      border-radius: 50%; 
+      background: rgba(255,255,255,0.1); 
+      border: 1px solid rgba(255,255,255,0.2); 
+      backdrop-filter: blur(4px);
     }
+    
     #joystick-thumb {
-      position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; border-radius: 50%; transform: translate(-50%, -50%);
-      background: #5be0ff; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      position: absolute; 
+      left: 50%; 
+      top: 50%; 
+      width: 40px; 
+      height: 40px; 
+      border-radius: 50%; 
+      transform: translate(-50%, -50%);
+      background: #5be0ff; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
-
-    #rotate-hint { display: none; } 
 
     /* SİNEMATİK KONUŞMA BALONU */
     #speech-bubble {
-      display: none; position: absolute; top: 25%; left: 50%; transform: translateX(-50%);
-      font-size: 32px; font-weight: 900; color: white; 
+      display: none; 
+      position: absolute; 
+      top: 25%; 
+      left: 50%; 
+      transform: translateX(-50%);
+      font-size: 32px; 
+      font-weight: 900; 
+      color: white; 
       text-shadow: 3px 3px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
-      z-index: 100; pointer-events: none; text-align: center;
+      z-index: 100; 
+      pointer-events: none; 
+      text-align: center; 
       transition: all 0.3s ease;
-    }
-
-    @media (max-width: 720px) {
-      #buttons { top: 10px; right: 10px; }
     }
   </style>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <div id="auth-overlay">
-    <div id="auth-card">
-      <h1>Hoş geldin Usta İnşacı</h1>
-      <p>Giriş yap veya kayıt ol. Maceran buluta kaydedilecek.</p>
-      <div class="auth-tabs">
-        <button class="tab-btn active" id="tab-login" onclick="setAuthMode('login')">Giriş Yap</button>
-        <button class="tab-btn" id="tab-register" onclick="setAuthMode('register')">Kayıt Ol</button>
-      </div>
-      <input id="auth-username" class="field" type="text" placeholder="Kullanıcı adı" autocomplete="username" />
-      <input id="auth-password" class="field" type="password" placeholder="Şifre" autocomplete="current-password" />
-      <select id="character-select" class="field" style="appearance:none;">
-        <option value="male">Karakter: Erkek</option>
-        <option value="female">Karakter: Kız</option>
-      </select>
-      <div class="auth-actions">
-        <button id="auth-submit" onclick="submitAuth()">Giriş Yap</button>
-        <button class="mini-btn" onclick="fillDemo()">Doldur</button>
-      </div>
-      <div id="auth-msg"></div>
-    </div>
-  </div>
 
-  <div id="speech-bubble">Oh be... Sonunda!</div>
+  <div id="speech-bubble">Oh be... Sonunda karaya çıktım!</div>
 
   <div id="ui-container">
     <div id="topbar">
       <div id="stats" class="panel">
         <div class="stat-line">Para: <span id="money-display" style="color:#50c878;">0</span> ₺</div>
         <div class="stat-line">Mesafe: <span id="distance-display" style="color:#ffcf5a;">0</span> m</div>
-        <div class="stat-line">Kanat: <span id="wings-display" style="color:#5be0ff;">0</span></div>
         <div class="stat-line">Bölge: <span id="zone-display">0</span></div>
         <div class="stat-line">Can: <span id="hp-display">100</span></div>
-        <div id="flight-status" style="display:none; color: #ffd966; font-weight:700;">Yakıt: <span id="fuel-display">100</span>%</div>
         <div id="health-warning">Suya düştün, hasar alıyorsun!</div>
       </div>
     </div>
@@ -192,15 +309,14 @@
     <div id="buttons">
       <button id="btn-start" onclick="toggleGameState()">Denize Açıl!</button>
       <button id="btn-camera" onclick="toggleCamera()">Kamera: 3. Şahıs</button>
-      <button id="btn-center" onclick="centerBuildView()">Merkezi Bul</button>
-      <button id="btn-fly" onclick="activateFlight()">Havalan</button>
+      <button id="btn-center" onclick="centerBuildView()">Kamerayı Sıfırla</button>
       <button id="btn-remove-mode" onclick="toggleRemoveMode()">Silme Modu</button>
       <button onclick="undoLastBlock()">Geri Al</button>
       <button onclick="openShop()">Dükkan</button>
-      <button onclick="openSaveMenu()">Kayıt</button>
     </div>
 
     <button id="btn-fire" onclick="fireCannons()">ATEŞ!</button>
+    <button id="btn-clear-all" onclick="clearAllBlocks()">Tümünü Sil 🗑️</button>
 
     <div id="inventory">
       <div class="inv-item selected" onclick="selectBlock('wood', this)">Odun<div class="inv-count" id="inv-wood">150</div></div>
@@ -212,565 +328,639 @@
       <div class="inv-item" onclick="selectBlock('diamond', this)">Elmas<div class="inv-count" id="inv-diamond">2</div></div>
       <div class="inv-item" onclick="selectBlock('emerald', this)">Zümrüt<div class="inv-count" id="inv-emerald">3</div></div>
       <div class="inv-item" onclick="selectBlock('neon', this)">Neon<div class="inv-count" id="inv-neon">10</div></div>
+      
+      <div class="inv-item" onclick="selectBlock('ruby', this)">Yakut<div class="inv-count" id="inv-ruby">0</div></div>
+      <div class="inv-item" onclick="selectBlock('titanium', this)">Titanyum<div class="inv-count" id="inv-titanium">0</div></div>
+      
       <div class="inv-item" onclick="selectBlock('cannon', this)">Top<div class="inv-count" id="inv-cannon">3</div></div>
       <div class="inv-item" onclick="selectBlock('engine', this)">Motor<div class="inv-count" id="inv-engine">2</div></div>
+      <div class="inv-item" onclick="selectBlock('thruster', this)">Roket<div class="inv-count" id="inv-thruster">0</div></div>
       <div class="inv-item" onclick="selectBlock('seat', this)">Koltuk<div class="inv-count" id="inv-seat">2</div></div>
     </div>
 
-    <div id="joystick-wrap" aria-label="joystick">
+    <div id="joystick-wrap">
       <div id="joystick-base"></div>
       <div id="joystick-thumb"></div>
     </div>
 
     <div id="shop-menu" class="modal">
-      <h3>Dükkan</h3>
-      <button class="crate-btn" onclick="buyCrate('ucuz')">Tahta Kutu (50 ₺) - Odun/Taş</button>
+      <h3>Kutu Dükkanı</h3>
+      <button class="crate-btn" style="background:#8D6E63;" onclick="buyCrate('ucuz')">Tahta Kutu (50 ₺) - Odun/Taş</button>
       <button class="crate-btn" style="background:linear-gradient(180deg,#c2185b 0%, #880e4f 100%);" onclick="buyCrate('pahali')">Gelişmiş Kutu (300 ₺) - Metal/Top</button>
       <button class="crate-btn" style="background:linear-gradient(180deg,#4b0082 0%, #310055 100%);" onclick="buyCrate('efsane')">Efsanevi Kutu (1000 ₺) - Elmas/Motor</button>
-      <button style="width:100%; margin: 8px 0; padding: 10px; background: rgba(0,151,167,0.8); border-radius:10px;" onclick="buyPlane()">Uçak Al (10 Kanat)</button>
-      <button onclick="closeModals()" style="background: rgba(216,63,53,0.8); width:100%; padding: 10px; border-radius:10px;">Kapat</button>
-    </div>
-
-    <div id="save-menu" class="modal">
-      <h3>Kayıtlar</h3>
-      <div id="slots"></div>
-      <button onclick="logoutUser()" style="background: rgba(100,100,100,0.8); width:100%; padding: 10px; border-radius:10px; margin-top: 10px;">Hesaptan Çıkış Yap</button>
-      <button onclick="closeModals()" style="background: rgba(216,63,53,0.8); width:100%; padding: 10px; border-radius:10px; margin-top: 10px;">Kapat</button>
+      <button class="crate-btn" style="background:linear-gradient(180deg,#000000 0%, #ff0044 100%); border: 2px solid #ffeb3b; font-weight:900;" onclick="buyCrate('uzay')">UZAY KUTUSU (5000 ₺) - Yakut/Titanyum/Roket</button>
+      <button onclick="closeModals()" style="background: rgba(216,63,53,0.8); width:100%; padding: 10px; border-radius:10px; margin-top:10px;">Kapat</button>
     </div>
   </div>
 
   <script>
-    // --- FIREBASE KURULUMU ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyDQr6vmi3qh7G1NlGAXMp58keyn1CG2LCk",
-      authDomain: "buildboat-bd680.firebaseapp.com",
-      projectId: "buildboat-bd680",
-      storageBucket: "buildboat-bd680.firebasestorage.app",
-      messagingSenderId: "37098333793",
-      appId: "1:37098333793:web:6927f99471046b49532c20",
-      measurementId: "G-ZD4FJ8X9KX"
-    };
-
-    let auth = null; let db = null;
-    try { firebase.initializeApp(firebaseConfig); auth = firebase.auth(); db = firebase.firestore(); } 
-    catch (err) { console.warn('Firebase başlatılamadı:', err); }
-
-    let authMode = 'login'; let currentUser = null;
-    function setAuthMode(mode) {
-      authMode = mode;
-      document.getElementById('tab-login').classList.toggle('active', mode === 'login');
-      document.getElementById('tab-register').classList.toggle('active', mode === 'register');
-      document.getElementById('auth-submit').innerText = mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol';
-      document.getElementById('auth-password').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
-      setAuthMessage(mode === 'login' ? 'Hesabına giriş yap.' : 'Yeni hesap oluştur.');
-    }
-    function setAuthMessage(text, isError = false) {
-      const el = document.getElementById('auth-msg');
-      el.style.color = isError ? '#ff8181' : '#ffd966'; el.innerText = text || '';
-    }
-    function normalizeUsername(name) { return String(name || '').trim().toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, ''); }
-    function usernameToEmail(username) { const clean = normalizeUsername(username); return clean ? `${clean}@buildboat.local` : ''; }
-
-    async function submitAuth() {
-      if (!auth) return setAuthMessage('Hata oluştu.', true);
-      const username = document.getElementById('auth-username').value.trim();
-      const password = document.getElementById('auth-password').value;
-      const character = document.getElementById('character-select').value || 'male';
-      selectedCharacter = character;
-      const email = usernameToEmail(username);
-      try {
-        if (authMode === 'register') {
-          const result = await auth.createUserWithEmailAndPassword(email, password);
-          if (result.user) await result.user.updateProfile({ displayName: username });
-          setAuthMessage('Kayıt başarılı.');
-        } else {
-          await auth.signInWithEmailAndPassword(email, password);
-          setAuthMessage('Giriş başarılı.');
-        }
-      } catch (err) { setAuthMessage('İşlem başarısız.', true); }
-    }
-    function fillDemo() { document.getElementById('auth-username').value = 'demo'; document.getElementById('auth-password').value = '123456'; }
-    function logoutUser() { if (auth) auth.signOut(); closeModals(); }
-
-    if (auth) {
-      auth.onAuthStateChanged(async (user) => {
-        currentUser = user || null;
-        const overlay = document.getElementById('auth-overlay');
-        if (user) { overlay.style.display = 'none'; } 
-        else { overlay.style.display = 'flex'; }
-      });
-    }
-
-    // --- OYUN DEĞİŞKENLERİ ---
-    let selectedCharacter = 'male';
+    // =========================================================
+    // OYUN VE KAMERA DEĞİŞKENLERİ
+    // =========================================================
     let buildCameraTarget = new THREE.Vector3(0, 0, 0);
+    let buildCameraAngleX = Math.PI / 4; 
+    let buildCameraPitch = 16; 
+    let pointerDownPos = { x: 0, y: 0 };
+
     let playerCharacterModel = null;
     let cameraMode = '3rd'; 
     let cameraAngleX = 0; 
-
     let targetCharPos = null;
     let isSitting = false;
-
     let isDraggingScreen = false;
     let previousMousePosition = { x: 0, y: 0 };
 
     let playerData = {
-      money: 100, wings: 0, hp: 100, hasPlane: false, fuel: 100,
-      inventory: { wood: 150, stone: 80, metal: 25, glass: 20, obsidian: 5, gold: 10, diamond: 2, emerald: 3, neon: 10, engine: 2, seat: 2, cannon: 3 }
+      money: 500, 
+      wings: 0, 
+      hp: 100, 
+      inventory: { 
+          wood: 150, stone: 80, metal: 25, glass: 20, obsidian: 5, gold: 10, diamond: 2, emerald: 3, neon: 10, 
+          ruby: 5, titanium: 5, 
+          cannon: 3, engine: 2, thruster: 1, seat: 2 
+      }
     };
 
     let gameState = 'build'; 
-    let currentZone = 0; let selectedBlockType = 'wood';
-    let boatBlocks = []; let obstacles = []; let isFlying = false; let inWater = false;
-    let controlVector = { x: 0, y: 0 }; let targetBoatRotation = 0;
-    let activePointerId = null; let removeMode = false; let lastHoveredCell = null;
+    let currentZone = 0; 
+    let selectedBlockType = 'wood';
+    let boatBlocks = []; 
+    let obstacles = []; 
+    let inWater = false;
+    let controlVector = { x: 0, y: 0 };
+    let activePointerId = null; 
+    let removeMode = false; 
     let projectiles = [];
-
-    let coins = [];
-    let particles = [];
+    let coins = []; 
+    let particles = []; 
     let dayTime = 0;
 
-    // --- SİNEMATİK ANİMASYON DEĞİŞKENLERİ ---
+    // SİNEMATİK (METEOR VE PORTAL) DEĞİŞKENLERİ
     let isEndingSequence = false;
     let endingPhase = 0;
     let endingTimer = 0;
-    let finalIsland = null;
+    let portalRing = null;
     let meteor = null;
+    let alienUfo = null; // UZAYLILAR GELİYOR!
 
+    // KLASİK VE YENİ BOYUT BİOMLARI
     const biomes = [
       { sky: 0x87CEEB, water: 0x1E90FF, rock: 0x555555, wall: 0x444444 }, 
       { sky: 0x2e8b57, water: 0x006400, rock: 0x800080, wall: 0x1a331a }, 
-      { sky: 0x8b0000, water: 0xb22222, rock: 0x111111, wall: 0x330000 }, 
-      { sky: 0xddeeff, water: 0x00ffff, rock: 0xffffff, wall: 0x88bbcc }, 
-      { sky: 0x0a0a1a, water: 0x2E0854, rock: 0x00ffcc, wall: 0x111122 }  
+      { sky: 0xddeeff, water: 0x00ffff, rock: 0xffffff, wall: 0x88bbcc }
     ];
+    
+    const alienBiomes = [
+      { sky: 0x2E0854, water: 0xff4500, rock: 0x111111, wall: 0x220000 }, 
+      { sky: 0x4B0082, water: 0x00ffcc, rock: 0xff00ff, wall: 0x110033 }, 
+      { sky: 0x000000, water: 0x8b0000, rock: 0x444444, wall: 0x000000 }  
+    ];
+    
     let lastGeneratedZ = 0;
     let environmentChunks = []; 
 
+    // BLOK ÖZELLİKLERİ
     const blockData = {
-      wood: { color: 0x5c4033, hp: 2, rough: 0.9, metal: 0.0 }, 
-      stone: { color: 0x777777, hp: 5, rough: 0.8, metal: 0.1 },
+      wood: { color: 0x5c4033, hp: 2, rough: 0.9 }, 
+      stone: { color: 0x777777, hp: 5, rough: 0.8 },
       metal: { color: 0xaaaaaa, hp: 10, rough: 0.3, metal: 0.8 }, 
-      glass: { color: 0x88ccff, hp: 1, transparent: true, opacity: 0.3, rough: 0.1, metal: 0.2 },
-      obsidian: { color: 0x1a052e, hp: 25, rough: 0.5, metal: 0.6 }, 
-      gold: { color: 0xffd700, hp: 8, rough: 0.2, metal: 1.0 }, 
-      diamond: { color: 0x00ffff, hp: 15, transparent: true, opacity: 0.7, rough: 0.1, metal: 0.5 },
-      emerald: { color: 0x50c878, hp: 12, transparent: true, opacity: 0.8, rough: 0.2, metal: 0.3 },
-      neon: { color: 0xff00ff, hp: 3, rough: 0.5, metal: 0.1, emissive: 0xff00ff, emissiveInt: 0.6 },
-      cannon: { color: 0x222222, hp: 5, rough: 0.4, metal: 0.9 },
-      engine: { color: 0x333333, hp: 3, rough: 0.6, metal: 0.8 }, 
-      seat: { color: 0x0047ab, hp: 1, rough: 0.8, metal: 0.1 }
+      glass: { color: 0x88ccff, hp: 1, transparent: true, opacity: 0.3 },
+      obsidian: { color: 0x1a052e, hp: 25, rough: 0.5 }, 
+      gold: { color: 0xffd700, hp: 8, metal: 1.0 }, 
+      diamond: { color: 0x00ffff, hp: 15, transparent: true, opacity: 0.7 },
+      emerald: { color: 0x50c878, hp: 12, transparent: true, opacity: 0.8 },
+      neon: { color: 0xff00ff, hp: 3, emissive: 0xff00ff, emissiveInt: 0.6 },
+      ruby: { color: 0xe0115f, hp: 30, transparent: true, opacity: 0.9, rough: 0.1 },
+      titanium: { color: 0x333333, hp: 50, rough: 0.4, metal: 0.9 },
+      thruster: { color: 0xff4500, hp: 8, rough: 0.6, emissive: 0xff0000, emissiveInt: 0.5 },
+      cannon: { color: 0x222222, hp: 5 },
+      engine: { color: 0x333333, hp: 3 }, 
+      seat: { color: 0x0047ab, hp: 1 }
     };
 
-    // --- THREE.JS KURULUMU ---
-    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x87CEEB); scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); camera.position.set(0, 12, 18); camera.lookAt(0, 0, 0);
+    // =========================================================
+    // THREE.JS KURULUMU
+    // =========================================================
+    const scene = new THREE.Scene(); 
+    scene.background = new THREE.Color(0x87CEEB); 
+    scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
     
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000); 
+    camera.position.set(0, 12, 18); 
+    camera.lookAt(0, 0, 0);
+    
+    const renderer = new THREE.WebGLRenderer({ antialias: true }); 
     renderer.setSize(window.innerWidth, window.innerHeight); 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); 
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = true; 
     document.body.appendChild(renderer.domElement);
     
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); 
+    scene.add(ambientLight);
     
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); 
     dirLight.position.set(20, 50, 20); 
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 150;
-    dirLight.shadow.camera.left = -40;
-    dirLight.shadow.camera.right = 40;
-    dirLight.shadow.camera.top = 40;
-    dirLight.shadow.camera.bottom = -40;
+    dirLight.castShadow = true; 
     scene.add(dirLight);
 
     const waterGeometry = new THREE.PlaneGeometry(1000, 5000);
-    const waterMaterial = new THREE.MeshStandardMaterial({ color: 0x1E90FF, transparent: true, opacity: 0.8, roughness: 0.1, metalness: 0.1 });
-    const water = new THREE.Mesh(waterGeometry, waterMaterial); water.rotation.x = -Math.PI / 2; water.position.y = -0.5; 
-    water.receiveShadow = true;
+    const waterMaterial = new THREE.MeshStandardMaterial({ color: 0x1E90FF, transparent: true, opacity: 0.8, roughness: 0.1 });
+    const water = new THREE.Mesh(waterGeometry, waterMaterial); 
+    water.rotation.x = -Math.PI / 2; 
+    water.position.y = -0.5; 
     scene.add(water);
 
-    const gridSize = 20; 
-    const sandGeo = new THREE.PlaneGeometry(gridSize, gridSize); 
-    const sandMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1.0, metalness: 0.0 });
-    const buildPlane = new THREE.Mesh(sandGeo, sandMat); 
+    const buildPlane = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1.0 })); 
     buildPlane.rotation.x = -Math.PI / 2; 
-    buildPlane.receiveShadow = true;
     scene.add(buildPlane);
     
-    const boatGroup = new THREE.Group(); scene.add(boatGroup);
-
-    const placementPreview = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), new THREE.MeshBasicMaterial({ color: 0x5be0ff, transparent: true, opacity: 0.35, depthWrite: false }));
-    placementPreview.visible = false; placementPreview.renderOrder = 999; scene.add(placementPreview);
+    const boatGroup = new THREE.Group(); 
+    scene.add(boatGroup);
     
-    const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+    const placementPreview = new THREE.Mesh(new THREE.BoxGeometry(1.02, 1.02, 1.02), new THREE.MeshBasicMaterial({ color: 0x5be0ff, transparent: true, opacity: 0.35, depthWrite: false }));
+    placementPreview.visible = false; 
+    placementPreview.renderOrder = 999; 
+    scene.add(placementPreview);
+    
+    const raycaster = new THREE.Raycaster(); 
+    const mouse = new THREE.Vector2();
 
-    function createCharacterModel(type) {
+    function createCharacterModel() {
       const charGroup = new THREE.Group();
-      const skinColor = type === 'female' ? 0xffe0bd : 0xffcc99;
-      const shirtColor = type === 'female' ? 0xff69b4 : 0x1e90ff; 
-
-      const headMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.6 });
-      const bodyMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.8 });
-      const legMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
-
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), headMat); head.position.y = 1.4; head.castShadow = true; charGroup.add(head);
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.3), bodyMat); body.position.y = 0.8; body.castShadow = true; charGroup.add(body);
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0xffcc99 })); 
+      head.position.y = 1.4; 
+      charGroup.add(head);
       
-      const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.25), legMat); leftLeg.position.set(-0.15, 0.25, 0); leftLeg.castShadow = true; charGroup.add(leftLeg);
-      const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.25), legMat); rightLeg.position.set(0.15, 0.25, 0); rightLeg.castShadow = true; charGroup.add(rightLeg);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.3), new THREE.MeshStandardMaterial({ color: 0x1e90ff })); 
+      body.position.y = 0.8; 
+      charGroup.add(body);
       
-      charGroup.userData.leftLeg = leftLeg; charGroup.userData.rightLeg = rightLeg;
+      const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.25), new THREE.MeshStandardMaterial({ color: 0x333333 })); 
+      leftLeg.position.set(-0.15, 0.25, 0); 
+      charGroup.add(leftLeg);
+      
+      const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.25), new THREE.MeshStandardMaterial({ color: 0x333333 })); 
+      rightLeg.position.set(0.15, 0.25, 0); 
+      charGroup.add(rightLeg);
+      
+      charGroup.userData.leftLeg = leftLeg; 
+      charGroup.userData.rightLeg = rightLeg; 
       return charGroup;
     }
 
-    // --- JOYSTICK ---
+    // =========================================================
+    // KONTROLLER VE İNŞA SİSTEMİ
+    // =========================================================
     function setControlVectorFromPoint(clientX, clientY) {
       const wrap = document.getElementById('joystick-wrap').getBoundingClientRect();
       const base = { x: wrap.left + wrap.width / 2, y: wrap.top + wrap.height / 2 };
-      const dx = clientX - base.x; const dy = clientY - base.y; const max = wrap.width * 0.32;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1; const clamped = Math.min(len, max);
-      const nx = (dx / len) * clamped / max; const ny = (dy / len) * clamped / max;
-      controlVector.x = Math.max(-1, Math.min(1, nx)); controlVector.y = Math.max(-1, Math.min(1, -ny));
-      const thumb = document.getElementById('joystick-thumb'); 
-      thumb.style.transform = `translate(calc(-50% + ${controlVector.x * max}px), calc(-50% + ${-controlVector.y * max}px))`;
+      const dx = clientX - base.x; 
+      const dy = clientY - base.y; 
+      const max = wrap.width * 0.32;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1; 
+      const clamped = Math.min(len, max);
+      const nx = (dx / len) * clamped / max; 
+      const ny = (dy / len) * clamped / max;
+      
+      controlVector.x = Math.max(-1, Math.min(1, nx)); 
+      controlVector.y = Math.max(-1, Math.min(1, -ny));
+      
+      document.getElementById('joystick-thumb').style.transform = `translate(calc(-50% + ${controlVector.x * max}px), calc(-50% + ${-controlVector.y * max}px))`;
     }
-    function resetJoystick() { controlVector.x = 0; controlVector.y = 0; activePointerId = null; document.getElementById('joystick-thumb').style.transform = `translate(-50%, -50%)`; }
-
+    
+    function resetJoystick() { 
+      controlVector.x = 0; 
+      controlVector.y = 0; 
+      activePointerId = null; 
+      document.getElementById('joystick-thumb').style.transform = `translate(-50%, -50%)`; 
+    }
+    
     const joystickWrap = document.getElementById('joystick-wrap');
-    joystickWrap.addEventListener('pointerdown', (e) => { activePointerId = e.pointerId; joystickWrap.setPointerCapture(e.pointerId); setControlVectorFromPoint(e.clientX, e.clientY); e.stopPropagation(); });
-    joystickWrap.addEventListener('pointermove', (e) => { if (activePointerId === e.pointerId) { setControlVectorFromPoint(e.clientX, e.clientY); e.stopPropagation(); } });
-    joystickWrap.addEventListener('pointerup', (e) => { if (activePointerId === e.pointerId) resetJoystick(); });
+    joystickWrap.addEventListener('pointerdown', (e) => { 
+      activePointerId = e.pointerId; 
+      joystickWrap.setPointerCapture(e.pointerId); 
+      setControlVectorFromPoint(e.clientX, e.clientY); 
+    });
+    joystickWrap.addEventListener('pointermove', (e) => { 
+      if (activePointerId === e.pointerId) setControlVectorFromPoint(e.clientX, e.clientY); 
+    });
+    joystickWrap.addEventListener('pointerup', resetJoystick); 
     joystickWrap.addEventListener('pointercancel', resetJoystick);
 
-    // --- İNŞA & SİLME (DÜZELTİLDİ) ---
-    function getTopBlockYAt(x, z) {
-      let maxY = -1;
-      for (const block of boatBlocks) { if (Math.round(block.position.x) === x && Math.round(block.position.z) === z) maxY = Math.max(maxY, Math.round(block.position.y)); } return maxY;
+    function getBlockAtCell(x, y, z) { 
+      return boatBlocks.find((b) => Math.round(b.position.x) === x && Math.round(b.position.y) === y && Math.round(b.position.z) === z) || null; 
     }
-    function getBlockAtCell(x, y, z) { return boatBlocks.find((b) => Math.round(b.position.x) === x && Math.round(b.position.y) === y && Math.round(b.position.z) === z) || null; }
-
+    
     function raycastBuildTarget(clientX, clientY) {
-      mouse.x = (clientX / window.innerWidth) * 2 - 1; mouse.y = -(clientY / window.innerHeight) * 2 + 1; raycaster.setFromCamera(mouse, camera);
-      const hits = raycaster.intersectObjects([buildPlane, ...boatBlocks], false); if (!hits.length) return null;
-      const hit = hits[0];
+      mouse.x = (clientX / window.innerWidth) * 2 - 1; 
+      mouse.y = -(clientY / window.innerHeight) * 2 + 1; 
+      raycaster.setFromCamera(mouse, camera);
       
-      // Kum zemin kontrolü
+      const hits = raycaster.intersectObjects([buildPlane, ...boatBlocks], false); 
+      if (!hits.length) return null;
+      
+      const hit = hits[0];
       if (hit.object === buildPlane) {
-        if (removeMode) return null; // Zemin silinemez
-        const x = Math.max(-9, Math.min(9, Math.round(hit.point.x))); const z = Math.max(-9, Math.min(9, Math.round(hit.point.z)));
-        return { x, y: getTopBlockYAt(x, z) + 1, z };
+        if (removeMode) return null; 
+        const x = Math.max(-9, Math.min(9, Math.round(hit.point.x))); 
+        const z = Math.max(-9, Math.min(9, Math.round(hit.point.z)));
+        let maxY = -1; 
+        boatBlocks.forEach(b => { 
+          if (Math.round(b.position.x) === x && Math.round(b.position.z) === z) maxY = Math.max(maxY, Math.round(b.position.y)); 
+        });
+        return { x, y: maxY + 1, z };
       }
       
       const worldPos = hit.object.getWorldPosition(new THREE.Vector3());
-      let target;
-      
-      if (removeMode) {
-          // Silme modundaysak tam tıklanan bloğu seç
-          target = worldPos.clone();
-      } else {
-          // Ekleme modundaysak bloğun tıklanan yüzeyinin yanına geç
-          const worldNormal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld).round();
-          target = worldPos.clone().add(worldNormal);
-      }
-      
-      return { x: Math.max(-9, Math.min(9, Math.round(target.x))), y: Math.max(0, Math.round(target.y)), z: Math.max(-9, Math.min(9, Math.round(target.z))) };
+      const target = removeMode ? worldPos.clone() : worldPos.clone().add(hit.face.normal.clone().transformDirection(hit.object.matrixWorld).round());
+      return { 
+        x: Math.max(-9, Math.min(9, Math.round(target.x))), 
+        y: Math.max(0, Math.round(target.y)), 
+        z: Math.max(-9, Math.min(9, Math.round(target.z))) 
+      };
     }
 
     function updatePlacementPreview(cell) {
-      if (!cell || gameState !== 'build' || isDraggingScreen) { placementPreview.visible = false; lastHoveredCell = null; return; }
-      lastHoveredCell = cell; placementPreview.visible = true; placementPreview.position.set(cell.x, cell.y, cell.z);
-      const occupied = getBlockAtCell(cell.x, cell.y, cell.z);
-      placementPreview.material.color.set(occupied && !removeMode ? 0xff6161 : (removeMode ? 0xffcf5a : 0x5be0ff));
+      if (!cell || gameState !== 'build' || isDraggingScreen) { 
+        placementPreview.visible = false; 
+        return; 
+      }
+      placementPreview.visible = true; 
+      placementPreview.position.set(cell.x, cell.y, cell.z);
+      placementPreview.material.color.set(getBlockAtCell(cell.x, cell.y, cell.z) && !removeMode ? 0xff6161 : (removeMode ? 0xffcf5a : 0x5be0ff));
     }
 
     window.addEventListener('pointerdown', (e) => {
       if (e.target !== renderer.domElement) return;
-      isDraggingScreen = true;
-      previousMousePosition = { x: e.clientX, y: e.clientY };
-
-      if (gameState === 'build') {
-        const cell = raycastBuildTarget(e.clientX, e.clientY);
-        if (cell) {
-          if (removeMode) removeBlockAtCell(cell.x, cell.y, cell.z);
-          else placeBlockAtCell(cell.x, cell.y, cell.z);
-        }
-      } else if (gameState === 'sail' && !isEndingSequence) {
-        mouse.x = (e.clientX / window.innerWidth) * 2 - 1; mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(boatBlocks);
-        if (hits.length > 0) {
-          const hitBlock = hits[0].object;
-          const isSeatBlock = hitBlock.userData.type === 'seat';
-          targetCharPos = hitBlock.position.clone();
-          targetCharPos.y += isSeatBlock ? 0.3 : 1.0; 
-          isSitting = isSeatBlock;
-        }
-      }
+      isDraggingScreen = true; 
+      previousMousePosition = { x: e.clientX, y: e.clientY }; 
+      pointerDownPos = { x: e.clientX, y: e.clientY };
     });
 
     window.addEventListener('pointermove', (e) => {
       if (e.target !== renderer.domElement) return;
       
       if (isDraggingScreen) {
-        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaX = e.clientX - previousMousePosition.x; 
         const deltaY = e.clientY - previousMousePosition.y;
         
-        if (gameState === 'build') {
-          buildCameraTarget.x -= deltaX * 0.05;
-          buildCameraTarget.z -= deltaY * 0.05;
-        } else if (gameState === 'sail') {
+        if (gameState === 'build') { 
+          buildCameraAngleX -= deltaX * 0.01; 
+          buildCameraPitch += deltaY * 0.05; 
+          if(buildCameraPitch < 2) buildCameraPitch = 2; 
+          if(buildCameraPitch > 30) buildCameraPitch = 30; 
+        } else if (gameState === 'sail') { 
           cameraAngleX -= deltaX * 0.01; 
         }
-        previousMousePosition = { x: e.clientX, y: e.clientY };
+        
+        previousMousePosition = { x: e.clientX, y: e.clientY }; 
         updatePlacementPreview(null); 
-      } else {
+      } else if (gameState === 'build') { 
+        updatePlacementPreview(raycastBuildTarget(e.clientX, e.clientY)); 
+      }
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      isDraggingScreen = false; 
+      if (e.target !== renderer.domElement) return;
+      
+      if (Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y) < 10) { 
         if (gameState === 'build') {
-          const cell = raycastBuildTarget(e.clientX, e.clientY); 
-          updatePlacementPreview(cell);
+          const cell = raycastBuildTarget(e.clientX, e.clientY);
+          if (cell) { 
+            removeMode ? removeBlockAtCell(cell.x, cell.y, cell.z) : placeBlockAtCell(cell.x, cell.y, cell.z); 
+          }
+        } else if (gameState === 'sail' && !isEndingSequence) {
+          mouse.x = (e.clientX / window.innerWidth) * 2 - 1; 
+          mouse.y = -(e.clientY / window.innerHeight) * 2 + 1; 
+          raycaster.setFromCamera(mouse, camera);
+          
+          const hits = raycaster.intersectObjects(boatBlocks);
+          if (hits.length > 0) { 
+            targetCharPos = hits[0].object.position.clone(); 
+            targetCharPos.y += hits[0].object.userData.type === 'seat' ? 0.3 : 1.0; 
+            isSitting = hits[0].object.userData.type === 'seat'; 
+          }
         }
       }
     });
 
-    window.addEventListener('pointerup', () => { isDraggingScreen = false; });
-    window.addEventListener('pointercancel', () => { isDraggingScreen = false; });
-
-    function removeBlockAtCell(x, y, z) {
-      const block = getBlockAtCell(x, y, z);
-      if (!block) return;
-      boatGroup.remove(block); boatBlocks = boatBlocks.filter((b) => b !== block);
-      playerData.inventory[block.userData.type] += 1; updateUI();
+    function forcePlaceBlock(type, x, y, z) {
+      const d = blockData[type]; 
+      if(!d) return;
+      
+      const material = new THREE.MeshStandardMaterial({ 
+        color: d.color, transparent: d.transparent || false, opacity: d.opacity || 1, 
+        roughness: d.rough || 0.5, metalness: d.metal || 0.0, 
+        emissive: d.emissive || 0x000000, emissiveIntensity: d.emissiveInt || 0 
+      });
+      
+      const block = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material); 
+      block.position.set(x, y, z); 
+      block.castShadow = true; 
+      block.userData = { type: type, hp: d.hp };
+      
+      boatGroup.add(block); 
+      boatBlocks.push(block);
     }
 
     function placeBlockAtCell(x, y, z) {
-      if (playerData.inventory[selectedBlockType] <= 0) return; 
-      x = Math.max(-9, Math.min(9, Math.round(x))); y = Math.max(0, Math.round(y)); z = Math.max(-9, Math.min(9, Math.round(z)));
-      if (getBlockAtCell(x, y, z)) { if (y < 19) { const higher = getBlockAtCell(x, y + 1, z); if (higher) return; y += 1; } else return; }
-      if (getBlockAtCell(x, y, z)) return;
-
-      const d = blockData[selectedBlockType];
-      const geometry = new THREE.BoxGeometry(1, 1, 1); 
-      const material = new THREE.MeshStandardMaterial({ 
-        color: d.color, transparent: d.transparent || false, opacity: d.opacity || 1,
-        roughness: d.rough || 0.5, metalness: d.metal || 0.0,
-        emissive: d.emissive || 0x000000, emissiveIntensity: d.emissiveInt || 0
-      });
-      const block = new THREE.Mesh(geometry, material); 
-      block.position.set(x, y, z); 
-      block.castShadow = true; block.receiveShadow = true; 
-      block.userData = { type: selectedBlockType, hp: d.hp };
+      if ((playerData.inventory[selectedBlockType] || 0) <= 0 || getBlockAtCell(x, y, z)) return; 
+      forcePlaceBlock(selectedBlockType, x, y, z);
+      playerData.inventory[selectedBlockType]--; 
+      updateUI();
+    }
+    
+    function removeBlockAtCell(x, y, z) {
+      const block = getBlockAtCell(x, y, z); 
+      if (!block) return;
       
-      boatGroup.add(block); boatBlocks.push(block); playerData.inventory[selectedBlockType]--; updateUI();
+      boatGroup.remove(block); 
+      boatBlocks = boatBlocks.filter((b) => b !== block);
+      
+      if(playerData.inventory[block.userData.type] !== undefined) {
+        playerData.inventory[block.userData.type]++; 
+      }
+      updateUI();
     }
 
-    function toggleCamera() {
-      cameraMode = cameraMode === '3rd' ? '1st' : '3rd';
-      document.getElementById('btn-camera').innerText = cameraMode === '3rd' ? 'Kamera: 3. Şahıs' : 'Kamera: 1. Şahıs';
+    function clearAllBlocks() {
+        if(!confirm("Tüm gemiyi silmek istediğine emin misin AMK?")) return;
+        boatBlocks.forEach(b => { 
+          if(playerData.inventory[b.userData.type] !== undefined) playerData.inventory[b.userData.type]++; 
+          boatGroup.remove(b); 
+        });
+        boatBlocks = []; 
+        updateUI();
     }
+
     function toggleRemoveMode() {
-      removeMode = !removeMode; document.getElementById('btn-remove-mode').innerText = removeMode ? 'Silme Modu: Açık' : 'Silme Modu';
+      removeMode = !removeMode; 
+      document.getElementById('btn-remove-mode').innerText = removeMode ? 'Silme Modu: Açık' : 'Silme Modu';
       document.getElementById('btn-remove-mode').style.background = removeMode ? "rgba(216,63,53,0.8)" : "rgba(30, 40, 64, 0.8)";
+      document.getElementById('btn-clear-all').style.display = removeMode ? "block" : "none";
     }
-    function undoLastBlock() {
-      const block = boatBlocks.pop(); if (!block) return; boatGroup.remove(block); playerData.inventory[block.userData.type] += 1; updateUI();
+    
+    function undoLastBlock() { 
+      const block = boatBlocks.pop(); 
+      if (!block) return; 
+      boatGroup.remove(block); 
+      playerData.inventory[block.userData.type]++; 
+      updateUI(); 
     }
-    function selectBlock(type, element) {
-      selectedBlockType = type; document.querySelectorAll('.inv-item').forEach((el) => el.classList.remove('selected')); element.classList.add('selected');
+    
+    function selectBlock(type, element) { 
+      selectedBlockType = type; 
+      document.querySelectorAll('.inv-item').forEach((el) => el.classList.remove('selected')); 
+      element.classList.add('selected'); 
     }
-    function centerBuildView() { buildCameraTarget.set(0, 0, 0); }
+    
+    function centerBuildView() { 
+      buildCameraTarget.set(0, 0, 0); 
+      buildCameraAngleX = Math.PI / 4; 
+      buildCameraPitch = 16; 
+    }
 
+    // =========================================================
+    // OYUN DURUMU (BUILD / SAIL) GEÇİŞLERİ
+    // =========================================================
     function toggleGameState() {
       if (gameState === 'build') {
         if (boatBlocks.length === 0) return alert('Önce bir gemi inşa etmelisin!');
-        gameState = 'sail'; playerData.hp = 100; inWater = false; targetCharPos = null; isSitting = false; cameraAngleX = 0; dayTime = 0;
-        document.getElementById('btn-start').innerText = 'Vazgeç / Yeniden Başla'; document.getElementById('inventory').style.display = 'none';
-        if (boatBlocks.some(b => b.userData.type === 'cannon')) document.getElementById('btn-fire').style.display = 'block';
-        if (playerData.hasPlane) document.getElementById('btn-fly').style.display = 'block';
+        
+        gameState = 'sail'; 
+        playerData.hp = 100; 
+        inWater = false; 
+        targetCharPos = null; 
+        isSitting = false; 
+        cameraAngleX = 0; 
+        dayTime = 0;
+        
+        document.getElementById('btn-start').innerText = 'Vazgeç / Yeniden Başla'; 
+        document.getElementById('inventory').style.display = 'none';
+        document.getElementById('btn-remove-mode').style.display = 'none'; 
+        document.getElementById('btn-clear-all').style.display = 'none';
+        
+        if (boatBlocks.some(b => b.userData.type === 'cannon')) {
+          document.getElementById('btn-fire').style.display = 'block';
+        }
+        
         buildPlane.visible = false; 
         
         if(playerCharacterModel) boatGroup.remove(playerCharacterModel);
-        playerCharacterModel = createCharacterModel(selectedCharacter);
-        let highestY = 0; boatBlocks.forEach(b => { if(b.position.y > highestY) highestY = b.position.y; });
-        playerCharacterModel.position.set(0, highestY + 1, 0); boatGroup.add(playerCharacterModel);
-        lastGeneratedZ = 0; generateChunk(currentZone); 
-      } else { resetGame(); }
+        playerCharacterModel = createCharacterModel(); 
+        
+        let highestY = 0; 
+        boatBlocks.forEach(b => { if(b.position.y > highestY) highestY = b.position.y; });
+        playerCharacterModel.position.set(0, highestY + 1, 0); 
+        boatGroup.add(playerCharacterModel);
+        
+        lastGeneratedZ = 0; 
+        generateChunk(currentZone); 
+      } else { 
+        resetGame(); 
+      }
       updateUI();
     }
 
     function resetGame() {
-      gameState = 'build'; document.getElementById('btn-start').innerText = 'Denize Açıl!';
-      document.getElementById('inventory').style.display = 'flex'; document.getElementById('btn-fly').style.display = 'none';
-      document.getElementById('btn-fire').style.display = 'none'; document.getElementById('health-warning').style.display = 'none';
-      boatGroup.position.set(0, 0, 0); boatGroup.rotation.set(0, 0, 0); buildPlane.visible = true; 
-      currentZone = 0; isFlying = false; playerData.fuel = 100; targetCharPos = null; isSitting = false; cameraAngleX = 0;
+      gameState = 'build'; 
+      document.getElementById('btn-start').innerText = 'Denize Açıl!';
+      document.getElementById('inventory').style.display = 'flex'; 
+      document.getElementById('btn-fire').style.display = 'none'; 
+      document.getElementById('health-warning').style.display = 'none';
+      document.getElementById('btn-remove-mode').style.display = 'block';
       
-      obstacles.forEach((obs) => scene.remove(obs)); obstacles = [];
+      boatGroup.position.set(0, 0, 0); 
+      boatGroup.rotation.set(0, 0, 0); 
+      buildPlane.visible = true; 
+      targetCharPos = null; 
+      isSitting = false; 
+      cameraAngleX = 0;
+      
+      obstacles.forEach((obs) => scene.remove(obs)); obstacles = []; 
       environmentChunks.forEach((wall) => scene.remove(wall)); environmentChunks = [];
-      projectiles.forEach((p) => scene.remove(p.mesh)); projectiles = [];
+      projectiles.forEach((p) => scene.remove(p.mesh)); projectiles = []; 
       coins.forEach(c => scene.remove(c)); coins = [];
-      particles.forEach(p => scene.remove(p.mesh)); particles = [];
       
-      scene.background.setHex(biomes[0].sky); scene.fog.color.setHex(biomes[0].sky); waterMaterial.color.setHex(biomes[0].water);
-      resetJoystick(); removeMode = false; document.getElementById('btn-remove-mode').innerText = 'Silme Modu'; document.getElementById('btn-remove-mode').style.background = "rgba(30, 40, 64, 0.8)";
+      resetJoystick(); 
+      removeMode = false; 
+      document.getElementById('btn-remove-mode').innerText = 'Silme Modu'; 
+      document.getElementById('btn-remove-mode').style.background = "rgba(30, 40, 64, 0.8)"; 
+      document.getElementById('btn-clear-all').style.display = 'none';
       
-      if(playerCharacterModel && playerCharacterModel.parent) { playerCharacterModel.parent.remove(playerCharacterModel); playerCharacterModel = null; }
-      
-      // Sinematik Animasyonu Sıfırla
-      isEndingSequence = false; endingPhase = 0; endingTimer = 0;
-      if (finalIsland) { scene.remove(finalIsland); finalIsland = null; }
-      if (meteor) { scene.remove(meteor); meteor = null; }
-      let speech = document.getElementById('speech-bubble');
-      if(speech) {
-         speech.style.display = 'none';
-         speech.innerText = "Oh be... Sonunda!";
-         speech.style.color = "white";
-         speech.style.transform = "translateX(-50%) scale(1)";
+      if(playerCharacterModel && playerCharacterModel.parent) { 
+        playerCharacterModel.parent.remove(playerCharacterModel); 
+        playerCharacterModel = null; 
       }
-
-      centerBuildView(); updateUI();
+      
+      isEndingSequence = false; 
+      endingPhase = 0; 
+      if (portalRing) { scene.remove(portalRing); portalRing = null; }
+      if (meteor) { scene.remove(meteor); meteor = null; }
+      if (alienUfo) { scene.remove(alienUfo); alienUfo = null; }
+      
+      document.getElementById('speech-bubble').style.display = 'none';
+      centerBuildView(); 
+      updateUI();
     }
 
+    // =========================================================
+    // HARİTA VE OYUN MEKANİKLERİ
+    // =========================================================
     function generateChunk(zoneIndex) {
-      const biome = biomes[zoneIndex % biomes.length];
-      scene.background.setHex(biome.sky); scene.fog.color.setHex(biome.sky); waterMaterial.color.setHex(biome.water);
-      const startZ = lastGeneratedZ; const chunkLength = 300; const endZ = startZ - chunkLength; 
+      const activeBiomes = zoneIndex > 10 ? alienBiomes : biomes;
+      const biome = activeBiomes[zoneIndex % activeBiomes.length];
       
-      const borderGeo = new THREE.BoxGeometry(4, 10, chunkLength);
+      scene.background.setHex(biome.sky); 
+      scene.fog.color.setHex(biome.sky); 
+      waterMaterial.color.setHex(biome.water);
+      
+      const startZ = lastGeneratedZ; 
+      const chunkLength = 300; 
+      const endZ = startZ - chunkLength; 
+      
+      const borderGeo = new THREE.BoxGeometry(4, 10, chunkLength); 
       const borderMat = new THREE.MeshStandardMaterial({ color: biome.wall, roughness: 0.9 });
-      const leftWall = new THREE.Mesh(borderGeo, borderMat); leftWall.position.set(-16, 5, startZ - (chunkLength/2)); leftWall.castShadow = true; leftWall.receiveShadow = true; scene.add(leftWall); environmentChunks.push(leftWall);
-      const rightWall = new THREE.Mesh(borderGeo, borderMat); rightWall.position.set(16, 5, startZ - (chunkLength/2)); rightWall.castShadow = true; rightWall.receiveShadow = true; scene.add(rightWall); environmentChunks.push(rightWall);
+      
+      const leftWall = new THREE.Mesh(borderGeo, borderMat); 
+      leftWall.position.set(-16, 5, startZ - (chunkLength/2)); 
+      scene.add(leftWall); 
+      environmentChunks.push(leftWall);
+      
+      const rightWall = new THREE.Mesh(borderGeo, borderMat); 
+      rightWall.position.set(16, 5, startZ - (chunkLength/2)); 
+      scene.add(rightWall); 
+      environmentChunks.push(rightWall);
 
       const obstacleCount = 40 + (zoneIndex * 10);
       for (let i = 0; i < obstacleCount; i++) {
-        const obsType = Math.random(); let geo, mat, size = 1.5 + Math.random() * 2.5;
-        if (obsType > 0.8) { geo = new THREE.BoxGeometry(size, size, size); mat = new THREE.MeshStandardMaterial({ color: 0xB22222, roughness: 0.9 }); } 
-        else if (obsType > 0.5) { geo = new THREE.CylinderGeometry(size/2, size/2, size*2, 8); mat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 }); } 
-        else { geo = new THREE.DodecahedronGeometry(size); mat = new THREE.MeshStandardMaterial({ color: biome.rock, roughness: 0.8 }); }
-
-        const obs = new THREE.Mesh(geo, mat); obs.castShadow = true; obs.receiveShadow = true;
-        if (obsType > 0.5 && obsType <= 0.8) { obs.rotation.z = Math.PI / 2; obs.rotation.y = Math.random() * Math.PI; }
-        obs.position.set((Math.random() - 0.5) * 24, size / 2 - 0.5, startZ - Math.random() * chunkLength); obs.userData = { type: 'rock' };
-        scene.add(obs); obstacles.push(obs);
+        const obsType = Math.random(); 
+        let geo, mat, size = 1.5 + Math.random() * 2.5;
+        
+        if (obsType > 0.8) { 
+          geo = new THREE.BoxGeometry(size, size, size); 
+          mat = new THREE.MeshStandardMaterial({ color: zoneIndex > 10 ? 0xff4500 : 0xB22222, roughness: 0.9 }); 
+        } else { 
+          geo = new THREE.DodecahedronGeometry(size); 
+          mat = new THREE.MeshStandardMaterial({ color: biome.rock, roughness: 0.8 }); 
+        }
+        
+        const obs = new THREE.Mesh(geo, mat); 
+        obs.castShadow = true;
+        
+        if (obsType > 0.8) { 
+          obs.rotation.z = Math.PI / 2; 
+          obs.rotation.y = Math.random() * Math.PI; 
+        }
+        
+        obs.position.set((Math.random() - 0.5) * 24, size / 2 - 0.5, startZ - Math.random() * chunkLength); 
+        obs.userData = { type: 'rock' };
+        scene.add(obs); 
+        obstacles.push(obs);
       }
 
       for (let i = 0; i < 15 + (zoneIndex * 5); i++) {
-        const coinGeo = new THREE.TorusGeometry(0.6, 0.15, 8, 16);
+        const coinGeo = new THREE.TorusGeometry(0.6, 0.15, 8, 16); 
         const coinMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 1.0 });
-        const coin = new THREE.Mesh(coinGeo, coinMat);
-        coin.position.set((Math.random() - 0.5) * 22, 1.0, startZ - Math.random() * chunkLength);
-        coin.castShadow = true; scene.add(coin); coins.push(coin);
+        const coin = new THREE.Mesh(coinGeo, coinMat); 
+        coin.position.set((Math.random() - 0.5) * 22, 1.0, startZ - Math.random() * chunkLength); 
+        scene.add(coin); 
+        coins.push(coin);
       }
-
       lastGeneratedZ = endZ;
     }
 
     function createExplosion(pos, colorHex) {
       for (let i = 0; i < 20; i++) {
-        const pGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-        const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
-        const p = new THREE.Mesh(pGeo, pMat);
-        p.position.copy(pos);
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: colorHex })); 
+        p.position.copy(pos); 
         scene.add(p);
-        particles.push({
-          mesh: p,
-          velocity: new THREE.Vector3((Math.random()-0.5)*1.2, Math.random()*1.2, (Math.random()-0.5)*1.2),
-          life: 1.0
+        particles.push({ 
+          mesh: p, 
+          velocity: new THREE.Vector3((Math.random()-0.5)*1.2, Math.random()*1.2, (Math.random()-0.5)*1.2), 
+          life: 1.0 
         });
       }
     }
 
     function checkCollisions() {
-      if (isFlying) return;
       for (let bIndex = boatBlocks.length - 1; bIndex >= 0; bIndex--) {
-        const block = boatBlocks[bIndex]; const blockWorldPos = new THREE.Vector3(); block.getWorldPosition(blockWorldPos);
-
+        const block = boatBlocks[bIndex]; 
+        const blockWorldPos = new THREE.Vector3(); 
+        block.getWorldPosition(blockWorldPos);
+        
         for (let oIndex = obstacles.length - 1; oIndex >= 0; oIndex--) {
           const obs = obstacles[oIndex];
           if (blockWorldPos.distanceTo(obs.position) < 2) {
             block.userData.hp -= 1; 
             if (block.userData.hp <= 0) { 
-              boatGroup.remove(block); boatBlocks.splice(bIndex, 1); 
+              boatGroup.remove(block); 
+              boatBlocks.splice(bIndex, 1); 
             }
-            createExplosion(obs.position, obs.material.color.getHex());
-            scene.remove(obs); obstacles.splice(oIndex, 1); break;
+            createExplosion(obs.position, obs.material.color.getHex()); 
+            scene.remove(obs); 
+            obstacles.splice(oIndex, 1); 
+            break;
           }
         }
       }
-      if (boatBlocks.length === 0 && !inWater && gameState === 'sail') { inWater = true; document.getElementById('health-warning').style.display = 'block'; }
+      if (boatBlocks.length === 0 && !inWater && gameState === 'sail') { 
+        inWater = true; 
+        document.getElementById('health-warning').style.display = 'block'; 
+      }
     }
 
     function fireCannons() {
       if(gameState !== 'sail' || isEndingSequence) return;
-      let cannons = boatBlocks.filter(b => b.userData.type === 'cannon');
-      cannons.forEach(c => {
+      boatBlocks.filter(b => b.userData.type === 'cannon').forEach(c => {
         const projectile = new THREE.Mesh(new THREE.SphereGeometry(0.4), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 }));
-        projectile.castShadow = true;
-        const worldPos = new THREE.Vector3(); c.getWorldPosition(worldPos);
-        projectile.position.copy(worldPos); scene.add(projectile); projectiles.push({ mesh: projectile, speed: 2.0 });
+        const worldPos = new THREE.Vector3(); 
+        c.getWorldPosition(worldPos); 
+        projectile.position.copy(worldPos); 
+        scene.add(projectile); 
+        projectiles.push({ mesh: projectile, speed: 2.0 });
       });
     }
 
-    function activateFlight() { if (playerData.fuel > 0 && !isEndingSequence) { isFlying = true; boatGroup.position.y = Math.min(8, boatGroup.position.y + 0.2); playerData.fuel -= 0.5; } else isFlying = false; }
-    
-    function updateCamera() {
-      if (cameraMode === '3rd') {
-        const behind = new THREE.Vector3(0, 11, 18);
-        behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), boatGroup.rotation.y + cameraAngleX);
-        const desired = boatGroup.position.clone().add(behind);
-        camera.position.lerp(desired, 0.08); 
-        camera.lookAt(boatGroup.position.x, boatGroup.position.y + 2, boatGroup.position.z - 5);
-      } else {
-        if (playerCharacterModel) {
-           const headOffset = new THREE.Vector3(0, isSitting ? 1.0 : 1.5, 0.2); 
-           const worldPos = playerCharacterModel.getWorldPosition(new THREE.Vector3()).add(headOffset);
-           camera.position.copy(worldPos);
-           const lookAtTarget = new THREE.Vector3(0, 0, -10);
-           lookAtTarget.applyAxisAngle(new THREE.Vector3(0, 1, 0), boatGroup.rotation.y + cameraAngleX);
-           lookAtTarget.add(worldPos); camera.lookAt(lookAtTarget);
-        }
-      }
-    }
-
-    // YENİ: FİNAL SİNEMATİĞİNİ BAŞLATAN FONKSİYON
+    // =========================================================
+    // YENİ UZAYLI SİNEMATİĞİ - DAHA YAVAŞ, DAHA UZUN!
+    // =========================================================
     function triggerEndingSequence() {
-      isEndingSequence = true;
+      isEndingSequence = true; 
       endingPhase = 0;
       endingTimer = 0;
       
-      // Ada Oluştur
       const islandGeo = new THREE.CylinderGeometry(15, 15, 2, 32);
-      const islandMat = new THREE.MeshStandardMaterial({ color: 0x228b22, roughness: 1.0 }); // Yeşil ada
-      finalIsland = new THREE.Mesh(islandGeo, islandMat);
+      const islandMat = new THREE.MeshStandardMaterial({ color: 0x228b22, roughness: 1.0 }); 
+      const finalIsland = new THREE.Mesh(islandGeo, islandMat);
       finalIsland.position.set(boatGroup.position.x, -0.5, boatGroup.position.z - 25);
-      finalIsland.receiveShadow = true;
       scene.add(finalIsland);
 
-      // Karakteri gemiden ayırıp sahneye ekle
       if (playerCharacterModel) {
         const worldPos = new THREE.Vector3();
         playerCharacterModel.getWorldPosition(worldPos);
         if (playerCharacterModel.parent) playerCharacterModel.parent.remove(playerCharacterModel);
+        
         scene.add(playerCharacterModel);
         playerCharacterModel.position.copy(worldPos);
         
-        // Karakterin yürüyeceği yer adanın ortası
         targetCharPos = new THREE.Vector3(finalIsland.position.x, finalIsland.position.y + 1.5, finalIsland.position.z);
-        playerCharacterModel.lookAt(targetCharPos); // Adaya doğru dönsün
+        playerCharacterModel.lookAt(targetCharPos); 
       }
     }
 
-    // YENİ: SİNEMATİK ANİMASYON DÖNGÜSÜ (DÜZELTİLDİ)
     function handleEndingSequence() {
-      const camTarget = targetCharPos.clone().add(new THREE.Vector3(0, 8, 20));
-      camera.position.lerp(camTarget, 0.05);
-      camera.lookAt(targetCharPos);
+      // Kamera animasyona odaklansın
+      const camTarget = targetCharPos ? targetCharPos.clone().add(new THREE.Vector3(0, 8, 20)) : boatGroup.position.clone().add(new THREE.Vector3(0, 15, 25));
+      camera.position.lerp(camTarget, 0.03); 
+      if(targetCharPos) camera.lookAt(targetCharPos);
+      else camera.lookAt(boatGroup.position);
+
+      let speech = document.getElementById('speech-bubble');
 
       if (endingPhase === 0) {
-        playerCharacterModel.position.lerp(targetCharPos, 0.03);
+        // Karakter yavaş yavaş yürür
+        playerCharacterModel.position.lerp(targetCharPos, 0.02); 
         const time = Date.now() * 0.015;
         playerCharacterModel.userData.leftLeg.rotation.x = Math.sin(time) * 0.6;
         playerCharacterModel.userData.rightLeg.rotation.x = Math.cos(time) * 0.6;
@@ -780,21 +970,33 @@
             playerCharacterModel.userData.leftLeg.rotation.x = 0;
             playerCharacterModel.userData.rightLeg.rotation.x = 0;
             
-            document.getElementById('speech-bubble').style.display = 'block';
-
-            const metGeo = new THREE.SphereGeometry(3, 16, 16);
-            const metMat = new THREE.MeshStandardMaterial({color: 0xff3300, emissive: 0xff0000, emissiveIntensity: 0.8});
-            meteor = new THREE.Mesh(metGeo, metMat);
-            meteor.position.set(targetCharPos.x, targetCharPos.y + 80, targetCharPos.z);
-            scene.add(meteor);
+            speech.innerText = "Oh be... Sonunda karaya çıktım!";
+            speech.style.color = "white";
+            speech.style.display = 'block';
+            endingTimer = 0;
         }
       } 
       else if (endingPhase === 1) {
+        // Bekleme süresi 3 saniye civarı
         endingTimer++;
-        if (endingTimer > 90) { endingPhase = 2; }
+        if (endingTimer > 180) { 
+            speech.innerText = "Lan havadan bişey geliyor?!";
+            speech.style.color = "#ffcf5a";
+            
+            // Meteoru çok yüksekten başlat
+            const metGeo = new THREE.SphereGeometry(4, 16, 16);
+            const metMat = new THREE.MeshStandardMaterial({color: 0xff3300, emissive: 0xff0000, emissiveIntensity: 0.8});
+            meteor = new THREE.Mesh(metGeo, metMat);
+            meteor.position.set(targetCharPos.x, targetCharPos.y + 120, targetCharPos.z);
+            scene.add(meteor);
+            
+            endingPhase = 2;
+            endingTimer = 0;
+        }
       } 
       else if (endingPhase === 2) {
-        meteor.position.y -= 1.8; 
+        // Meteor yavaşça süzülüyor
+        meteor.position.y -= 1.0; 
         
         if (meteor.position.y <= targetCharPos.y + 1) {
             createExplosion(targetCharPos, 0xff3300); 
@@ -804,113 +1006,219 @@
             scene.remove(playerCharacterModel); 
             scene.remove(meteor);
             
-            // SON YAZISI EKLENDİ
-            let speech = document.getElementById('speech-bubble');
-            speech.innerText = "bitti AMK";
+            speech.innerText = "GÜÜM!";
             speech.style.color = "#ff6161";
-            speech.style.transform = "translateX(-50%) scale(2.5)";
+            speech.style.transform = "translateX(-50%) scale(3)";
             
             endingPhase = 3;
             endingTimer = 0;
         }
       } 
       else if (endingPhase === 3) {
+        // Patlama sonrası şok süresi (2.5 saniye)
         endingTimer++;
-        if (endingTimer > 150) { resetGame(); }
+        if (endingTimer > 150) { 
+            const pGeo = new THREE.TorusGeometry(15, 2, 16, 100);
+            const pMat = new THREE.MeshStandardMaterial({color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 1});
+            portalRing = new THREE.Mesh(pGeo, pMat);
+            portalRing.position.set(boatGroup.position.x, 5, boatGroup.position.z - 40);
+            scene.add(portalRing);
+
+            speech.innerText = "Oha lan, meteor uzay yarığı açtı!";
+            speech.style.color = "#5be0ff";
+            speech.style.transform = "translateX(-50%) scale(1.5)";
+            
+            endingPhase = 4;
+            endingTimer = 0;
+        }
+      }
+      else if (endingPhase === 4) {
+          // Portala yavaşça emilme
+          if(portalRing) portalRing.rotation.z += 0.02;
+          boatGroup.position.z -= 0.4; 
+          
+          if (boatGroup.position.z <= portalRing.position.z) {
+              scene.remove(portalRing); 
+              portalRing = null;
+              
+              boatGroup.position.z = 0;
+              lastGeneratedZ = 0;
+              environmentChunks.forEach(w => scene.remove(w)); environmentChunks = [];
+              obstacles.forEach(o => scene.remove(o)); obstacles = [];
+              
+              speech.innerText = "YENİ BOYUTA GEÇİLDİ AMK!";
+              speech.style.color = "#ffcf5a";
+              speech.style.transform = "translateX(-50%) scale(2)";
+              
+              scene.background.setHex(0xffffff); // Beyaz patlama efekti
+              
+              endingPhase = 5;
+              endingTimer = 0;
+          }
+      }
+      else if (endingPhase === 5) {
+          endingTimer++;
+          if(endingTimer === 30) {
+              // Yeni biyom arka planı
+              scene.background.setHex(alienBiomes[0].sky); 
+          }
+          if(endingTimer > 150) {
+              speech.innerText = "Burası neresi lan?!";
+              speech.style.transform = "translateX(-50%) scale(1.2)";
+              speech.style.color = "white";
+              
+              // UZAYLI GEMİSİNİ SPAWNLA
+              alienUfo = new THREE.Group();
+              const dome = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16, 0, Math.PI*2, 0, Math.PI/2), new THREE.MeshStandardMaterial({color: 0x5be0ff, transparent: true, opacity: 0.6, emissive: 0x5be0ff, emissiveIntensity: 0.5}));
+              const base = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.5, 32), new THREE.MeshStandardMaterial({color: 0x44ff44, metalness: 0.8}));
+              base.position.y = -0.25;
+              alienUfo.add(dome); alienUfo.add(base);
+              
+              alienUfo.position.set(boatGroup.position.x, 15, boatGroup.position.z - 30);
+              scene.add(alienUfo);
+              
+              endingPhase = 6;
+              endingTimer = 0;
+          }
+      }
+      else if (endingPhase === 6) {
+          // Uzaylılar yavaşça yaklaşıyor
+          alienUfo.position.lerp(new THREE.Vector3(boatGroup.position.x, 5, boatGroup.position.z - 10), 0.02);
+          alienUfo.rotation.y += 0.05;
+          endingTimer++;
+          
+          if(endingTimer > 150) {
+              // EFSANEVİ UZAYLI DİYALOĞU
+              speech.innerText = "👽 gel kahve içek amk 👽";
+              speech.style.color = "#50c878";
+              speech.style.transform = "translateX(-50%) scale(2)";
+              
+              endingPhase = 7;
+              endingTimer = 0;
+          }
+      }
+      else if (endingPhase === 7) {
+          alienUfo.rotation.y += 0.05;
+          endingTimer++;
+          if(endingTimer > 250) { // Yazıyı okumak için zaman
+              // Uzaylılar uçup gider
+              alienUfo.position.y += 0.5;
+              alienUfo.position.z -= 1.0;
+              
+              if(endingTimer > 350) {
+                  scene.remove(alienUfo);
+                  alienUfo = null;
+                  speech.style.display = 'none';
+                  speech.style.transform = "translateX(-50%) scale(1)";
+                  
+                  // NORMAL OYUNA DEVAM
+                  isEndingSequence = false;
+                  currentZone = 11; 
+                  generateChunk(currentZone);
+              }
+          }
       }
     }
 
+    // =========================================================
+    // ARAYÜZ VE DÜKKAN
+    // =========================================================
     function updateUI() {
-      document.getElementById('money-display').innerText = playerData.money; document.getElementById('wings-display').innerText = playerData.wings;
-      document.getElementById('zone-display').innerText = currentZone; document.getElementById('hp-display').innerText = Math.floor(playerData.hp);
+      document.getElementById('money-display').innerText = playerData.money; 
+      document.getElementById('zone-display').innerText = currentZone; 
+      document.getElementById('hp-display').innerText = Math.floor(playerData.hp);
+      if(document.getElementById('distance-display')) {
+        document.getElementById('distance-display').innerText = gameState === 'sail' ? Math.floor(Math.abs(boatGroup.position.z)) : 0;
+      }
       
-      let distanceElem = document.getElementById('distance-display');
-      if(distanceElem) { distanceElem.innerText = gameState === 'sail' ? Math.floor(Math.abs(boatGroup.position.z)) : 0; }
-      
-      document.getElementById('fuel-display').innerText = Math.floor(playerData.fuel); document.getElementById('inv-wood').innerText = playerData.inventory.wood;
-      document.getElementById('inv-stone').innerText = playerData.inventory.stone; document.getElementById('inv-metal').innerText = playerData.inventory.metal;
-      if(document.getElementById('inv-glass')) document.getElementById('inv-glass').innerText = playerData.inventory.glass || 0;
-      if(document.getElementById('inv-obsidian')) document.getElementById('inv-obsidian').innerText = playerData.inventory.obsidian || 0;
-      if(document.getElementById('inv-gold')) document.getElementById('inv-gold').innerText = playerData.inventory.gold || 0;
-      if(document.getElementById('inv-diamond')) document.getElementById('inv-diamond').innerText = playerData.inventory.diamond || 0;
-      if(document.getElementById('inv-emerald')) document.getElementById('inv-emerald').innerText = playerData.inventory.emerald || 0;
-      if(document.getElementById('inv-neon')) document.getElementById('inv-neon').innerText = playerData.inventory.neon || 0;
-      if(document.getElementById('inv-cannon')) document.getElementById('inv-cannon').innerText = playerData.inventory.cannon || 0;
-      document.getElementById('inv-engine').innerText = playerData.inventory.engine; document.getElementById('inv-seat').innerText = playerData.inventory.seat;
+      const items = ['wood','stone','metal','glass','obsidian','gold','diamond','emerald','neon','ruby','titanium','cannon','engine','thruster','seat'];
+      items.forEach(item => { 
+        if(document.getElementById('inv-'+item)) {
+          document.getElementById('inv-'+item).innerText = playerData.inventory[item] || 0; 
+        }
+      });
     }
 
-    function openShop() { document.getElementById('shop-menu').style.display = 'block'; }
-    function openSaveMenu() { document.getElementById('save-menu').style.display = 'block'; }
-    function closeModals() { document.getElementById('shop-menu').style.display = 'none'; document.getElementById('save-menu').style.display = 'none'; }
+    function toggleCamera() { 
+      cameraMode = cameraMode === '3rd' ? '1st' : '3rd'; 
+      document.getElementById('btn-camera').innerText = cameraMode === '3rd' ? 'Kamera: 3. Şahıs' : 'Kamera: 1. Şahıs'; 
+    }
     
-    // --- DÜKKAN SİSTEMİ (DÜZELTİLDİ) ---
-    function buyPlane() {
-        if(playerData.wings >= 10) { playerData.wings -= 10; playerData.hasPlane = true; alert('Uçak Kilidi Açıldı! Artık Havalanabilirsin.'); updateUI(); }
-        else { alert('Yeterli kanadın yok (10 Kanat Lazım)!'); }
-    } 
+    function openShop() { document.getElementById('shop-menu').style.display = 'block'; }
+    function closeModals() { document.getElementById('shop-menu').style.display = 'none'; }
     
     function buyCrate(type) { 
-        if (type === 'ucuz') {
-            if (playerData.money >= 50) { playerData.money -= 50; playerData.inventory.wood += 20; playerData.inventory.stone += 10; alert('Ucuz Kutu Açıldı: +20 Odun, +10 Taş'); }
-            else { alert('Paran yetmiyor!'); }
-        } else if (type === 'pahali') {
-            if (playerData.money >= 300) { playerData.money -= 300; playerData.inventory.metal += 15; playerData.inventory.cannon += 2; alert('Gelişmiş Kutu Açıldı: +15 Metal, +2 Top'); }
-            else { alert('Paran yetmiyor!'); }
-        } else if (type === 'efsane') {
-            if (playerData.money >= 1000) { playerData.money -= 1000; playerData.inventory.diamond += 5; playerData.inventory.engine += 1; alert('Efsanevi Kutu Açıldı: +5 Elmas, +1 Motor'); }
-            else { alert('Paran yetmiyor!'); }
+        if (type === 'ucuz' && playerData.money >= 50) { 
+          playerData.money -= 50; playerData.inventory.wood += 20; playerData.inventory.stone += 10; alert('Ucuz Kutu Açıldı!'); 
         }
+        else if (type === 'pahali' && playerData.money >= 300) { 
+          playerData.money -= 300; playerData.inventory.metal += 15; playerData.inventory.cannon += 2; alert('Gelişmiş Kutu Açıldı!'); 
+        }
+        else if (type === 'efsane' && playerData.money >= 1000) { 
+          playerData.money -= 1000; playerData.inventory.diamond += 5; playerData.inventory.engine += 1; playerData.inventory.emerald += 2; alert('Efsanevi Kutu Açıldı!'); 
+        }
+        else if (type === 'uzay' && playerData.money >= 5000) { 
+          playerData.money -= 5000; playerData.inventory.ruby += 10; playerData.inventory.titanium += 15; playerData.inventory.thruster += 2; alert('UZAY KUTUSU AÇILDI! Yakutlar, Titanyumlar ve Roketler eklendi!'); 
+        }
+        else { alert('Paran yetmiyor!'); }
         updateUI();
     }
 
+    // =========================================================
+    // ANA ANİMASYON DÖNGÜSÜ
+    // =========================================================
     function animate() {
       requestAnimationFrame(animate);
-
       water.position.y = -0.5 + Math.sin(Date.now() * 0.002) * 0.15;
 
       if (gameState === 'sail') {
-        
         if (isEndingSequence) {
             handleEndingSequence();
-        } 
-        else {
+        } else {
             dayTime += 0.001; 
-            const lightInt = 0.4 + Math.max(0, Math.sin(dayTime)) * 0.6; 
-            dirLight.intensity = lightInt * 0.8; ambientLight.intensity = lightInt * 0.6;
-            if (Math.sin(dayTime) < -0.2) {
+            const activeBiomes = currentZone > 10 ? alienBiomes : biomes;
+            const biome = activeBiomes[currentZone % activeBiomes.length];
+            
+            // Gece - Gündüz ve Biome Döngüsü
+            if (Math.sin(dayTime) < -0.2 && currentZone <= 10) {
                scene.background.setHex(0x0a0a1a); scene.fog.color.setHex(0x0a0a1a);
             } else {
-               scene.background.setHex(biomes[currentZone % biomes.length].sky);
-               scene.fog.color.setHex(biomes[currentZone % biomes.length].sky);
+               scene.background.setHex(biome.sky); scene.fog.color.setHex(biome.sky);
             }
 
+            // Hız Hesaplamaları
             const engineCount = boatBlocks.filter(b => b.userData.type === 'engine').length;
-            const engineBoost = engineCount * 0.1;
-            const baseSpeed = Math.min(1.2, 0.35 + (currentZone * 0.05)) + engineBoost; 
+            const thrusterCount = boatBlocks.filter(b => b.userData.type === 'thruster').length;
+            const engineBoost = (engineCount * 0.1) + (thrusterCount * 0.35); 
             
+            const baseSpeed = Math.min(1.5, 0.35 + (currentZone * 0.05)) + engineBoost; 
             const boost = Math.max(0, controlVector.y) * 0.20;
-            
+
             let minX = 0, maxX = 0;
-            if (boatBlocks.length > 0) {
-              minX = Math.min(...boatBlocks.map(b => b.position.x));
-              maxX = Math.max(...boatBlocks.map(b => b.position.x));
+            if (boatBlocks.length > 0) { 
+              minX = Math.min(...boatBlocks.map(b => b.position.x)); 
+              maxX = Math.max(...boatBlocks.map(b => b.position.x)); 
             }
-            const limitLeft = -14 - minX;
+            const limitLeft = -14 - minX; 
             const limitRight = 14 - maxX;
 
-            boatGroup.position.x += controlVector.x * 0.25;
+            // Gemiyi İlerletme
+            boatGroup.position.x += controlVector.x * 0.25; 
             boatGroup.position.z -= baseSpeed + boost;
-            
-            if (boatGroup.position.x < limitLeft) boatGroup.position.x = limitLeft;
+            if (boatGroup.position.x < limitLeft) boatGroup.position.x = limitLeft; 
             if (boatGroup.position.x > limitRight) boatGroup.position.x = limitRight;
-            
             boatGroup.rotation.y += (-controlVector.x * 0.55 - boatGroup.rotation.y) * 0.12;
 
-            if (!isFlying && boatGroup.position.y > 0) { boatGroup.position.y -= 0.09; } else if (isFlying) { activateFlight(); if (playerData.fuel <= 0) isFlying = false; }
-            checkCollisions(); water.position.z = camera.position.z; dirLight.position.z = camera.position.z + 20;
+            if (boatGroup.position.y > 0) boatGroup.position.y -= 0.09; 
+            
+            checkCollisions(); 
+            water.position.z = camera.position.z; 
+            dirLight.position.z = camera.position.z + 20;
 
+            // Su Hasarı ve Karakter Animasyonları
             if (inWater) {
-              playerData.hp -= 0.2; if(playerCharacterModel) playerCharacterModel.position.y -= 0.05; 
+              playerData.hp -= 0.2; 
+              if(playerCharacterModel) playerCharacterModel.position.y -= 0.05; 
               if (playerData.hp <= 0) { alert('Canın bitti!'); resetGame(); }
             } else if (playerCharacterModel) {
               if (targetCharPos) {
@@ -918,71 +1226,120 @@
                 if (playerCharacterModel.position.distanceTo(targetCharPos) < 0.1) {
                    targetCharPos = null;
                    if (isSitting) { 
-                      playerCharacterModel.userData.leftLeg.rotation.x = -Math.PI/2; playerCharacterModel.userData.rightLeg.rotation.x = -Math.PI/2;
-                      playerCharacterModel.userData.leftLeg.position.y = 0.5; playerCharacterModel.userData.rightLeg.position.y = 0.5;
+                     playerCharacterModel.userData.leftLeg.rotation.x = -Math.PI/2; 
+                     playerCharacterModel.userData.rightLeg.rotation.x = -Math.PI/2; 
+                     playerCharacterModel.userData.leftLeg.position.y = 0.5; 
+                     playerCharacterModel.userData.rightLeg.position.y = 0.5; 
                    } else { 
-                      playerCharacterModel.userData.leftLeg.position.y = 0.25; playerCharacterModel.userData.rightLeg.position.y = 0.25;
+                     playerCharacterModel.userData.leftLeg.position.y = 0.25; 
+                     playerCharacterModel.userData.rightLeg.position.y = 0.25; 
                    }
                 } else { 
-                  const time = Date.now() * 0.015; playerCharacterModel.userData.leftLeg.rotation.x = Math.sin(time) * 0.6; playerCharacterModel.userData.rightLeg.rotation.x = Math.cos(time) * 0.6;
+                  const time = Date.now() * 0.015; 
+                  playerCharacterModel.userData.leftLeg.rotation.x = Math.sin(time) * 0.6; 
+                  playerCharacterModel.userData.rightLeg.rotation.x = Math.cos(time) * 0.6; 
                 }
               } else if (!isSitting) {
-                const speed = Math.abs(controlVector.x) + Math.abs(controlVector.y) + 0.1; const time = Date.now() * 0.005 * speed;
-                playerCharacterModel.userData.leftLeg.rotation.x = Math.sin(time) * 0.6; playerCharacterModel.userData.rightLeg.rotation.x = Math.cos(time) * 0.6;
+                const speed = Math.abs(controlVector.x) + Math.abs(controlVector.y) + 0.1; 
+                const time = Date.now() * 0.005 * speed;
+                playerCharacterModel.userData.leftLeg.rotation.x = Math.sin(time) * 0.6; 
+                playerCharacterModel.userData.rightLeg.rotation.x = Math.cos(time) * 0.6;
               }
             }
 
+            // Top Mermileri (Projectiles)
             projectiles.forEach((p, pIdx) => {
-              p.mesh.position.z -= p.speed; let hit = false;
+              p.mesh.position.z -= p.speed; 
               for(let oIdx = obstacles.length - 1; oIdx >= 0; oIdx--) {
                 if(p.mesh.position.distanceTo(obstacles[oIdx].position) < 3) {
-                  createExplosion(obstacles[oIdx].position, obstacles[oIdx].material.color.getHex());
-                  scene.remove(obstacles[oIdx]); obstacles.splice(oIdx, 1); 
-                  scene.remove(p.mesh); projectiles.splice(pIdx, 1); hit = true; break;
+                  createExplosion(obstacles[oIdx].position, obstacles[oIdx].material.color.getHex()); 
+                  scene.remove(obstacles[oIdx]); 
+                  obstacles.splice(oIdx, 1); 
+                  scene.remove(p.mesh); 
+                  projectiles.splice(pIdx, 1); 
+                  break;
                 }
               }
             });
 
+            // Altın Toplama Sistemi
             for (let cIdx = coins.length - 1; cIdx >= 0; cIdx--) {
-              let c = coins[cIdx];
-              c.rotation.y += 0.05;
-              if (c.position.z > boatGroup.position.z + 50) { scene.remove(c); coins.splice(cIdx, 1); continue; }
-              if (c.position.distanceTo(boatGroup.position) < 4) {
-                 playerData.money += 10;
-                 scene.remove(c); coins.splice(cIdx, 1);
+              let c = coins[cIdx]; c.rotation.y += 0.05;
+              if (c.position.z > boatGroup.position.z + 50) { 
+                scene.remove(c); coins.splice(cIdx, 1); continue; 
+              }
+              if (c.position.distanceTo(boatGroup.position) < 4) { 
+                playerData.money += (currentZone > 10 ? 50 : 10); 
+                scene.remove(c); 
+                coins.splice(cIdx, 1); 
               }
             }
 
+            // Harita Yükleme (Sonsuz Döngü)
             if (boatGroup.position.z - 150 < lastGeneratedZ) generateChunk(currentZone + 1);
-            obstacles = obstacles.filter(obs => { if (obs.position.z > boatGroup.position.z + 50) { scene.remove(obs); return false; } return true; });
             
+            // Arkada kalan engelleri temizle
+            obstacles = obstacles.filter(obs => { 
+              if (obs.position.z > boatGroup.position.z + 50) { 
+                scene.remove(obs); 
+                return false; 
+              } 
+              return true; 
+            });
+            
+            // Bölge Kontrolü
             const newZone = Math.floor(Math.abs(boatGroup.position.z) / 300);
             if (newZone > currentZone) { 
                 currentZone = newZone; 
                 playerData.money += 15 + (currentZone * 5); 
                 
-                if (currentZone === 10) {
-                    triggerEndingSequence(); 
-                }
+                // 10. BÖLGEDE METEOR + PORTAL SİNEMATİĞİ BAŞLAR
+                if (currentZone === 10) triggerEndingSequence(); 
             }
-            updateCamera();
+            
+            // Kamera Pozisyonu (Kalkıştayken)
+            if (cameraMode === '3rd') {
+              const behind = new THREE.Vector3(0, 11, 18); 
+              behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), boatGroup.rotation.y + cameraAngleX);
+              camera.position.lerp(boatGroup.position.clone().add(behind), 0.08); 
+              camera.lookAt(boatGroup.position.x, boatGroup.position.y + 2, boatGroup.position.z - 5);
+            } else if (playerCharacterModel) {
+               const worldPos = playerCharacterModel.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, isSitting ? 1.0 : 1.5, 0.2));
+               camera.position.copy(worldPos); 
+               const lookAtTarget = new THREE.Vector3(0, 0, -10); 
+               lookAtTarget.applyAxisAngle(new THREE.Vector3(0, 1, 0), boatGroup.rotation.y + cameraAngleX);
+               lookAtTarget.add(worldPos); 
+               camera.lookAt(lookAtTarget);
+            }
         }
         
+        // Patlama Partikülleri Her Durumda Çalışır
         for (let pIdx = particles.length - 1; pIdx >= 0; pIdx--) {
-          let p = particles[pIdx];
+          let p = particles[pIdx]; 
           p.life -= 0.02;
-          if (p.life <= 0) { scene.remove(p.mesh); particles.splice(pIdx, 1); }
-          else { p.mesh.position.add(p.velocity); p.mesh.scale.setScalar(p.life); }
+          if (p.life <= 0) { 
+            scene.remove(p.mesh); 
+            particles.splice(pIdx, 1); 
+          } else { 
+            p.mesh.position.add(p.velocity); 
+            p.mesh.scale.setScalar(p.life); 
+          }
         }
 
       } else if (gameState === 'build') {
-        const desired = new THREE.Vector3(buildCameraTarget.x + 14, 16, buildCameraTarget.z + 14);
-        camera.position.lerp(desired, 0.08); camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
+        // İNŞA MODU 360 DERECE KAMERA
+        const radius = 24; 
+        camera.position.lerp(new THREE.Vector3(buildCameraTarget.x + Math.sin(buildCameraAngleX) * radius, buildCameraPitch, buildCameraTarget.z + Math.cos(buildCameraAngleX) * radius), 0.15); 
+        camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
       }
 
-      updateUI(); renderer.render(scene, camera);
+      updateUI(); 
+      renderer.render(scene, camera);
     }
-    updateUI(); animate();
+    
+    // OYUNU BAŞLAT
+    updateUI(); 
+    animate();
   </script>
 </body>
 </html>
