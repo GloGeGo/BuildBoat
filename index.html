@@ -175,6 +175,7 @@
     <div id="topbar">
       <div id="stats" class="panel">
         <div class="stat-line">💰 Para: <span id="money-display" style="color:#50c878;">0</span> ₺</div>
+        <div class="stat-line">🏆 Kupa: <span id="cup-display" style="color:#ffd966;">0</span></div>
         <div class="stat-line" style="margin: 6px 0;">📍 Mesafe: <span id="distance-display">0</span> m</div>
         <div class="stat-line">🌍 Bölge: <span id="zone-display">0</span></div>
         <div class="stat-line">❤️ Can: <span id="hp-display">100</span></div>
@@ -223,6 +224,7 @@
       <div class="inv-item" onclick="selectBlock('engine', this)">Motor<div class="inv-count" id="inv-engine">2</div></div>
       <div class="inv-item" onclick="selectBlock('thruster', this)">Roket<div class="inv-count" id="inv-thruster">0</div></div>
       <div class="inv-item" onclick="selectBlock('seat', this)">Koltuk<div class="inv-count" id="inv-seat">2</div></div>
+      <div class="inv-item" onclick="selectBlock('miner', this)">Madenci<div class="inv-count" id="inv-miner">0</div></div>
     </div>
 
     <div id="joystick-wrap"><div id="joystick-base"></div><div id="joystick-thumb"></div></div>
@@ -259,6 +261,11 @@
             <button class="crate-btn" onclick="buyItem('seat', 1, 50)">1x Koltuk (50 ₺)</button>
         </div>
       </div>
+            <div class="shop-section">
+        <h4>Özel Karakterler 🧑‍🌾</h4>
+        <button class="crate-btn" style="background:linear-gradient(180deg,#4CAF50 0%, #2E7D32 100%);" onclick="buySpecial('miner')">Madenci (5 Kupa)</button>
+        <p style="font-size:11px; color:#bbb; margin:8px 0 0;">Taşları otomatik kıran güvenli işçi.</p>
+      </div>
       <button onclick="closeModals()" style="background: #d32f2f; width:100%; padding: 12px; border-radius:10px; font-weight:bold; border:none; color:white; cursor:pointer;">Dükkandan Çık</button>
     </div>
 
@@ -276,19 +283,20 @@
     // =========================================================
     // 1. GLOBAL FONKSİYONLARIN TANIMLANMASI (HATA ÖNLEYİCİ)
     // =========================================================
-    // Tüm arayüz ve etkileşim fonksiyonları önce tanımlanır, böylece "is not defined" hatası alınmaz.
     
     function updateUI() {
       document.getElementById('money-display').innerText = playerData.money; 
       document.getElementById('zone-display').innerText = currentZone; 
       document.getElementById('hp-display').innerText = Math.floor(playerData.hp);
+      const cupElem = document.getElementById('cup-display');
+      if(cupElem) cupElem.innerText = playerData.cups || 0;
       
       const distanceElem = document.getElementById('distance-display');
       if(distanceElem) { 
           distanceElem.innerText = gameState === 'sail' ? Math.floor(Math.abs(boatGroup.position.z)) : 0; 
       }
       
-      const items = ['wood','stone','metal','glass','obsidian','fence','window','gold','diamond','emerald','neon','ruby','titanium','lamp','chest','bed','wheel','cannon','engine','thruster','seat'];
+      const items = ['wood','stone','metal','glass','obsidian','fence','window','gold','diamond','emerald','neon','ruby','titanium','lamp','chest','bed','wheel','cannon','engine','thruster','seat','miner'];
       items.forEach(item => { 
           const elem = document.getElementById('inv-'+item);
           if(elem) { elem.innerText = playerData.inventory[item] || 0; } 
@@ -332,10 +340,10 @@
     let lastSaveTime = 0;
 
     let playerData = {
-      money: 500, hp: 100, 
+      money: 500, hp: 100, cups: 0, 
       inventory: { 
           wood: 150, stone: 80, metal: 25, glass: 20, obsidian: 5, fence: 10, window: 10, gold: 10, diamond: 2, emerald: 3, neon: 10, 
-          ruby: 5, titanium: 5, chest: 2, lamp: 5, bed: 2, wheel: 2, cannon: 3, engine: 2, thruster: 1, seat: 2 
+          ruby: 5, titanium: 5, chest: 2, lamp: 5, bed: 2, wheel: 2, cannon: 3, engine: 2, thruster: 1, seat: 2, miner: 0 
       }
     };
 
@@ -364,6 +372,8 @@
     let meteor = null;
     let alienUfo = null; 
     let motherModel = null;
+    let zone10WinActive = false;
+    let zone10WinTimer = 0;
 
     const biomes = [
       { sky: 0x87CEEB, water: 0x1E90FF, rock: 0x555555, wall: 0x444444 }, 
@@ -399,7 +409,8 @@
       thruster: { color: 0xff4500, hp: 8, rough: 0.6, emissive: 0xff0000, emissiveInt: 0.5 },
       cannon: { color: 0x222222, hp: 5 },
       engine: { color: 0x333333, hp: 3 }, 
-      seat: { color: 0x0047ab, hp: 1 }
+      seat: { color: 0x0047ab, hp: 1 },
+      miner: { color: 0x2e7d32, hp: 8 }
     };
 
     // =========================================================
@@ -493,7 +504,8 @@
             await db.collection("oyuncular").doc(currentUser.uid).set({
                 playerData: playerData,
                 blocks: blocksToSave,
-                zone: currentZone
+                blueprint: buildBlueprint,
+                zone: Math.min(10, currentZone)
             });
             alert("Başarılı! Gemi ve envanter buluta kaydedildi. ☁️🚀");
         } catch (e) { 
@@ -512,7 +524,12 @@
             if(doc.exists) {
                 const data = doc.data();
                 if(data.playerData) playerData = data.playerData;
-                currentZone = data.zone || 0;
+                if(playerData.cups === undefined) playerData.cups = 0;
+                if(playerData.inventory && playerData.inventory.miner === undefined) playerData.inventory.miner = 0;
+                
+                currentZone = 0; // DEĞİŞEN KISIM: Buluttan çekilse bile bölgeyi sıfırla
+                
+                if(data.blueprint && Array.isArray(data.blueprint)) buildBlueprint = data.blueprint;
 
                 boatBlocks.forEach(b => boatGroup.remove(b));
                 boatBlocks = [];
@@ -541,9 +558,11 @@
         if (now - lastSaveTime > 2000) { 
             const data = {
                 money: playerData.money,
+                cups: playerData.cups || 0,
                 inventory: playerData.inventory,
                 blocks: boatBlocks.map(b => ({ type: b.userData.type, x: Math.round(b.position.x), y: Math.round(b.position.y), z: Math.round(b.position.z), r: b.rotation.y })),
-                zone: currentZone
+                blueprint: buildBlueprint,
+                zone: Math.min(10, currentZone)
             };
             localStorage.setItem('buildBoardSaveV12', JSON.stringify(data));
             lastSaveTime = now;
@@ -556,7 +575,11 @@
             try {
                 const data = JSON.parse(save);
                 if(data.money !== undefined) playerData.money = data.money;
-                if(data.zone !== undefined) currentZone = data.zone;
+                if(data.cups !== undefined) playerData.cups = data.cups;
+                
+                currentZone = 0; // DEĞİŞEN KISIM: Yerel hafızadan çekerken de bölgeyi sıfırla
+                
+                if(data.blueprint && Array.isArray(data.blueprint)) buildBlueprint = data.blueprint;
                 if(data.inventory) { for(let k in data.inventory) { playerData.inventory[k] = data.inventory[k]; } }
                 if(data.blocks && Array.isArray(data.blocks)) {
                     boatBlocks.forEach(b => boatGroup.remove(b));
@@ -780,7 +803,7 @@
 
     function forcePlaceBlock(type, x, y, z) {
       const d = blockData[type]; if(!d) return;
-      let isCustom = (type === 'seat' || type === 'engine' || type === 'chest' || type === 'lamp' || type === 'fence' || type === 'window' || type === 'bed' || type === 'wheel');
+      let isCustom = (type === 'seat' || type === 'engine' || type === 'chest' || type === 'lamp' || type === 'fence' || type === 'window' || type === 'bed' || type === 'wheel' || type === 'miner');
       let block;
       
       if (isCustom) {
@@ -822,6 +845,14 @@
               const base = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 0.9), new THREE.MeshStandardMaterial({ color: 0xaa0000 })); base.position.y = -0.35; base.castShadow = true;
               const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.3), new THREE.MeshStandardMaterial({ color: 0xffffff })); pillow.position.set(0, -0.15, -0.25); pillow.castShadow = true;
               block.add(base); block.add(pillow);
+          } else if (type === 'miner') {
+              const torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.9, 0.45), new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.9 })); torso.position.y = 0.15; torso.castShadow = true;
+              const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), new THREE.MeshStandardMaterial({ color: 0xffc9a3, roughness: 0.9 })); head.position.y = 0.95; head.castShadow = true;
+              const helmet = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.16, 14), new THREE.MeshStandardMaterial({ color: 0xffd54f, roughness: 0.6 })); helmet.position.y = 1.22; helmet.castShadow = true;
+              const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), new THREE.MeshStandardMaterial({ color: 0x2b2b2b })); leftLeg.position.set(-0.16, -0.45, 0); leftLeg.castShadow = true;
+              const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), new THREE.MeshStandardMaterial({ color: 0x2b2b2b })); rightLeg.position.set(0.16, -0.45, 0); rightLeg.castShadow = true;
+              const drill = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 1.0), new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.4, metalness: 0.7 })); drill.position.set(0.68, 0.2, 0); drill.rotation.z = -0.15; drill.castShadow = true;
+              block.add(torso); block.add(head); block.add(helmet); block.add(leftLeg); block.add(rightLeg); block.add(drill);
           }
       } else {
           const material = new THREE.MeshStandardMaterial({ color: d.color, transparent: d.transparent || false, opacity: d.opacity || 1, roughness: d.rough || 0.5, metalness: d.metal || 0.0, emissive: d.emissive || 0x000000, emissiveIntensity: d.emissiveInt || 0 });
@@ -876,6 +907,87 @@
         else { alert("Paran yetmiyor!"); }
     };
 
+    window.buySpecial = function(type) {
+        if (type === 'miner') {
+            if ((playerData.cups || 0) < 5) return alert('Bu karakter için 5 kupa gerekli!');
+            playerData.cups = Math.max(0, (playerData.cups || 0) - 5);
+            playerData.inventory.miner = (playerData.inventory.miner || 0) + 1;
+            alert('Madenci satın alındı!');
+            updateUI();
+        }
+    };
+
+    function createCharacterModel(kind = 'default') {
+      const group = new THREE.Group();
+
+      const skin = new THREE.MeshStandardMaterial({ color: 0xffc9a3, roughness: 0.9 });
+      const cloth = new THREE.MeshStandardMaterial({ color: kind === 'miner' ? 0x2e7d32 : 0x1565c0, roughness: 0.9 });
+      const pants = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 1.0 });
+      const helmet = new THREE.MeshStandardMaterial({ color: kind === 'miner' ? 0xffd54f : 0xdddddd, roughness: 0.6, metalness: 0.1 });
+      const toolMat = new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.4, metalness: 0.7 });
+
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.45), cloth);
+      body.position.y = 1.35;
+      body.castShadow = true;
+      group.add(body);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), skin);
+      head.position.y = 2.05;
+      head.castShadow = true;
+      group.add(head);
+
+      if (kind === 'miner') {
+        const helmetMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.38, 0.18, 18), helmet);
+        helmetMesh.position.y = 2.34;
+        helmetMesh.castShadow = true;
+        group.add(helmetMesh);
+
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.18), new THREE.MeshStandardMaterial({
+          color: 0xffff66, emissive: 0xffcc00, emissiveIntensity: 0.7
+        }));
+        lamp.position.set(0.14, 2.28, 0.18);
+        group.add(lamp);
+
+        const tool = new THREE.Group();
+        const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.9, 10), toolMat);
+        handle.rotation.z = Math.PI / 2;
+        const headTool = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.35), toolMat);
+        headTool.position.set(0.48, 0, 0);
+        tool.add(handle);
+        tool.add(headTool);
+        tool.position.set(0.65, 1.45, 0.05);
+        tool.rotation.z = -0.2;
+        group.add(tool);
+      }
+
+      const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.75, 0.18), skin);
+      leftArm.position.set(-0.5, 1.45, 0);
+      leftArm.rotation.z = 0.2;
+      leftArm.castShadow = true;
+      group.add(leftArm);
+
+      const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.75, 0.18), skin);
+      rightArm.position.set(0.5, 1.45, 0);
+      rightArm.rotation.z = -0.2;
+      rightArm.castShadow = true;
+      group.add(rightArm);
+
+      const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), pants);
+      leftLeg.position.set(-0.18, 0.45, 0);
+      leftLeg.castShadow = true;
+      group.add(leftLeg);
+
+      const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.85, 0.22), pants);
+      rightLeg.position.set(0.18, 0.45, 0);
+      rightLeg.castShadow = true;
+      group.add(rightLeg);
+
+      group.userData.leftLeg = leftLeg;
+      group.userData.rightLeg = rightLeg;
+      group.userData.type = kind;
+      return group;
+    }
+
     // =========================================================
     // 10. OYUN DURUMU (DENİZE AÇILMA / VAZGEÇ)
     // =========================================================
@@ -894,8 +1006,8 @@
         document.getElementById('btn-rotate').style.display = 'none';
         
         dirPlane.visible = false; 
-        water.visible = true; // Deniz Görünür Oluyor
-        buildPlane.visible = false; // Kum Gizleniyor (Çakışma Engellendi)
+        water.visible = true; 
+        buildPlane.visible = false; 
         
         const thrustersCount = boatBlocks.filter(b => b.userData.type === 'thruster').length;
         rocketFuel = thrustersCount * 5.0; 
@@ -908,9 +1020,12 @@
         }
         
         if(playerCharacterModel) boatGroup.remove(playerCharacterModel);
-        playerCharacterModel = createCharacterModel(); 
+        playerCharacterModel = createCharacterModel('default'); 
         let highestY = 0; boatBlocks.forEach(b => { if(b.position.y > highestY) highestY = b.position.y; });
         playerCharacterModel.position.set(0, highestY + 1, 0); boatGroup.add(playerCharacterModel);
+        
+        // EKLENEN KISIM: Her zaman en baştan (0) başla
+        currentZone = 0; 
         
         lastGeneratedZ = 0; generateChunk(currentZone); lastTime = performance.now(); 
       } else { resetGame(); }
@@ -919,14 +1034,15 @@
 
     window.resetGame = function() {
       gameState = 'build'; document.getElementById('btn-start').innerText = 'Denize Açıl!';
+      currentZone = 0;
       document.getElementById('inventory').style.display = 'flex'; 
       document.getElementById('btn-fire').style.display = 'none'; document.getElementById('btn-rocket').style.display = 'none'; 
       document.getElementById('rocket-fuel-container').style.display = 'none'; document.getElementById('health-warning').style.display = 'none';
       document.getElementById('btn-remove-mode').style.display = 'block'; document.getElementById('btn-rotate').style.display = 'block';
       
       dirPlane.visible = true; 
-      water.visible = false; // Deniz Gizleniyor
-      buildPlane.visible = true; // Kum Görünür Oluyor (Çakışma Engellendi)
+      water.visible = false; 
+      buildPlane.visible = true; 
       
       boatGroup.position.set(0, 0, 0); boatGroup.rotation.set(0, 0, 0); 
       targetCharPos = null; isSitting = false; cameraAngleX = 0; isRocketBoostActive = false; rocketFuel = 0.0;
@@ -941,6 +1057,8 @@
       if(playerCharacterModel && playerCharacterModel.parent) { playerCharacterModel.parent.remove(playerCharacterModel); playerCharacterModel = null; }
       
       isEndingSequence = false; isMotherSequence = false; endingPhase = 0; 
+      zone10WinActive = false; // EKLENEN KISIM: Bölge 10 zaferini sıfırlama
+      
       if (portalRing) { scene.remove(portalRing); portalRing = null; }
       if (meteor) { scene.remove(meteor); meteor = null; }
       if (alienUfo) { scene.remove(alienUfo); alienUfo = null; }
@@ -949,15 +1067,16 @@
       document.getElementById('speech-bubble').style.display = 'none'; 
       centerBuildView(); 
 
-      // BLUEPRINT'İ GERİ YÜKLE (Gemi sağlam haliyle döner)
       boatBlocks.forEach(b => boatGroup.remove(b));
       boatBlocks = [];
-      buildBlueprint.forEach(b => { 
-          let oldRot = currentRotation;
-          currentRotation = b.r || 0;
-          forcePlaceBlock(b.type, b.x, b.y, b.z); 
-          currentRotation = oldRot;
-      });
+      if (buildBlueprint && buildBlueprint.length > 0) {
+        buildBlueprint.forEach(b => { 
+            let oldRot = currentRotation;
+            currentRotation = b.r || 0;
+            forcePlaceBlock(b.type, b.x, b.y, b.z); 
+            currentRotation = oldRot;
+        });
+      }
 
       updateUI();
     };
@@ -1065,7 +1184,7 @@
       } else if (endingPhase === 3) {
         endingTimer++;
         if (endingTimer > 150) { 
-            portalRing = new THREE.Mesh(new THREE.TorusGeometry(15, 2, 16, 100), newMeshStandardMaterial({color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 1}));
+            portalRing = new THREE.Mesh(new THREE.TorusGeometry(15, 2, 16, 100), new THREE.MeshStandardMaterial({color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 1}));
             portalRing.position.set(boatGroup.position.x, 5, boatGroup.position.z - 40); scene.add(portalRing);
             speech.innerText = "Oha lan, meteor uzay yarığı açtı!"; speech.style.color = "#5be0ff"; speech.style.transform = "translateX(-50%) scale(1.5)";
             endingPhase = 4; endingTimer = 0;
@@ -1100,11 +1219,28 @@
               alienUfo.position.y += 0.5; alienUfo.position.z -= 1.0;
               if(endingTimer > 350) {
                   scene.remove(alienUfo); alienUfo = null; speech.style.display = 'none'; speech.style.transform = "translateX(-50%) scale(1)";
-                  isEndingSequence = false; currentZone = 11; generateChunk(currentZone);
+                  isEndingSequence = false; currentZone = 10; startZone10Win();
               }
           }
       }
     }
+
+    function startZone10Win() {
+      if (zone10WinActive) return;
+      zone10WinActive = true;
+      zone10WinTimer = 0;
+      gameState = 'win';
+      currentZone = 10;
+      playerData.money += 1000;
+      playerData.cups = (playerData.cups || 0) + 1;
+      const speech = document.getElementById('speech-bubble');
+      speech.innerText = 'Bölge 10 tamamlandı! +1000 ₺ +1 Kupa';
+      speech.style.color = '#ffd966';
+      speech.style.display = 'block';
+      speech.style.transform = 'translateX(-50%) scale(1.2)';
+      updateUI();
+    }
+
 
     function triggerMotherSequence() {
         isMotherSequence = true; endingPhase = 0; endingTimer = 0;
@@ -1116,7 +1252,7 @@
         const roof = new THREE.Mesh(new THREE.ConeGeometry(7, 4, 4), new THREE.MeshStandardMaterial({color: 0x8b0000})); roof.position.y = 7; roof.rotation.y = Math.PI/4; roof.castShadow = true;
         houseGroup.add(base); houseGroup.add(roof); houseGroup.position.set(island.position.x, 0.5, island.position.z - 5); scene.add(houseGroup);
 
-        motherModel = createCharacterModel(); 
+        motherModel = createCharacterModel('default'); 
         motherModel.children[1].material.color.setHex(0xff69b4); 
         motherModel.position.set(island.position.x, 1.5, island.position.z + 2); scene.add(motherModel);
 
@@ -1177,16 +1313,24 @@
           } else { chunk.dropped += dropSpeed; chunk.blocks.forEach(b => b.position.y -= dropSpeed); }
       }
 
+      if (gameState === 'win') {
+        zone10WinTimer++;
+        if (zone10WinTimer > 90) {
+          document.getElementById('speech-bubble').style.display = 'none';
+          window.resetGame();
+        }
+      }
+
       if (gameState === 'sail') {
         if (isEndingSequence) { handleEndingSequence(); }
         else if (isMotherSequence) { handleMotherSequence(); }
         else {
             dayTime += 0.001; 
-            const activeBiomes = currentZone > 10 ? alienBiomes : biomes; const biome = activeBiomes[currentZone % activeBiomes.length];
-            if (Math.sin(dayTime) < -0.2 && currentZone <= 10) { scene.background.setHex(0x0a0a1a); scene.fog.color.setHex(0x0a0a1a); } 
+            const activeBiomes = biomes; const biome = activeBiomes[currentZone % activeBiomes.length];
+            if (Math.sin(dayTime) < -0.2) { scene.background.setHex(0x0a0a1a); scene.fog.color.setHex(0x0a0a1a); } 
             else { scene.background.setHex(biome.sky); scene.fog.color.setHex(biome.sky); }
 
-            if (currentZone > 10 && currentZone < 15) {
+            if (false) {
                 if (Math.random() < 0.03) { 
                     let hazard = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5 + Math.random()), new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff0000, emissiveIntensity: 0.5 }));
                     hazard.position.set(boatGroup.position.x + (Math.random() - 0.5)*20, 60, boatGroup.position.z - (Math.random()*40) - 10);
@@ -1258,6 +1402,21 @@
               }
             }
 
+            const miners = boatBlocks.filter(b => b.userData.type === 'miner');
+            if (miners.length > 0 && obstacles.length > 0) {
+              miners.forEach(miner => {
+                const wp = new THREE.Vector3();
+                miner.getWorldPosition(wp);
+                const targetPos = wp.clone().add(new THREE.Vector3(0, 0, -3));
+                const target = obstacles.find(o => o.position.distanceTo(targetPos) < 5);
+                if (target && Math.random() < 0.08) {
+                  createExplosion(target.position, 0xaaaaaa);
+                  scene.remove(target);
+                  obstacles = obstacles.filter(o => o !== target);
+                }
+              });
+            }
+
             projectiles.forEach((p, pIdx) => {
               p.mesh.position.z -= p.speed; 
               for(let oIdx = obstacles.length - 1; oIdx >= 0; oIdx--) {
@@ -1270,17 +1429,17 @@
             for (let cIdx = coins.length - 1; cIdx >= 0; cIdx--) {
               let c = coins[cIdx]; c.rotation.y += 0.05;
               if (c.position.z > boatGroup.position.z + 50) { scene.remove(c); coins.splice(cIdx, 1); continue; }
-              if (c.position.distanceTo(boatGroup.position) < 4) { playerData.money += (currentZone > 10 ? 50 : 10); scene.remove(c); coins.splice(cIdx, 1); updateUI(); }
+              if (c.position.distanceTo(boatGroup.position) < 4) { playerData.money += 10; scene.remove(c); coins.splice(cIdx, 1); updateUI(); }
             }
 
-            if (boatGroup.position.z - 150 < lastGeneratedZ) generateChunk(currentZone + 1);
+            if (boatGroup.position.z - 150 < lastGeneratedZ && currentZone < 10) generateChunk(currentZone + 1);
             obstacles = obstacles.filter(obs => { if (obs.position.z > boatGroup.position.z + 50) { scene.remove(obs); return false; } return true; });
             
             const newZone = Math.floor(Math.abs(boatGroup.position.z) / 300);
             if (newZone > currentZone) { 
                 currentZone = newZone; playerData.money += 15 + (currentZone * 5); updateUI();
-                if (currentZone === 10) triggerEndingSequence(); 
-                if (currentZone === 15) triggerMotherSequence(); 
+                if (currentZone === 10) startZone10Win(); 
+                 
             }
             
             if (cameraMode === '3rd') {
