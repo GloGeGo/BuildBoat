@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>3D Gemi İnşa Oyunu - Hatasız Final Sürümü</title>
+  <title>3D Gemi İnşa Oyunu - Efsanevi Güncelleme</title>
   <style>
     /* TEMEL DEĞİŞKENLER VE ARAYÜZ AYARLARI */
     :root {
@@ -225,12 +225,29 @@
       <div class="inv-item" onclick="selectBlock('thruster', this)">Roket<div class="inv-count" id="inv-thruster">0</div></div>
       <div class="inv-item" onclick="selectBlock('seat', this)">Koltuk<div class="inv-count" id="inv-seat">2</div></div>
       <div class="inv-item" onclick="selectBlock('miner', this)">Madenci<div class="inv-count" id="inv-miner">0</div></div>
+      <div class="inv-item" onclick="selectBlock('farter', this)">Osurukçu<div class="inv-count" id="inv-farter">0</div></div>
     </div>
 
     <div id="joystick-wrap"><div id="joystick-base"></div><div id="joystick-thumb"></div></div>
 
     <div id="shop-menu" class="modal">
       <h3>Dükkan Merkezi 🛒</h3>
+      
+      <div class="shop-section">
+        <h4>Alan Geliştirmeleri 🏖️</h4>
+        <button class="crate-btn" id="btn-upgrade-area" style="background:linear-gradient(180deg,#ff9800 0%, #e65100 100%);" onclick="upgradeBuildArea()">Kum Alanını Büyüt (1 Kupa)</button>
+        <p style="font-size:11px; color:#bbb; margin:8px 0 0;">İnşa alanını ve nehri 2 kat büyütür. (Maksimum 2 kez alınabilir)</p>
+      </div>
+
+      <div class="shop-section">
+        <h4>Özel Karakterler 🧑‍🌾</h4>
+        <button class="crate-btn" style="background:linear-gradient(180deg,#4CAF50 0%, #2E7D32 100%);" onclick="buySpecial('miner')">Madenci (5 Kupa)</button>
+        <p style="font-size:11px; color:#bbb; margin:8px 0 12px;">Taşları otomatik kıran güvenli işçi.</p>
+
+        <button class="crate-btn" style="background:linear-gradient(180deg,#8b4513 0%, #5c4033 100%);" onclick="buySpecial('farter')">Osurukçu (1 Kupa)</button>
+        <p style="font-size:11px; color:#bbb; margin:8px 0 0;">Denizdeyken osurarak gemiyi ve kayaları kahverengi yapar.</p>
+      </div>
+
       <div class="shop-section">
         <h4>Şans Kutuları 🎁</h4>
         <button class="crate-btn" style="background:#8D6E63;" onclick="buyCrate('ucuz')">Tahta Kutu (50 ₺)</button>
@@ -260,11 +277,6 @@
             <button class="crate-btn" style="background:#ff4500;" onclick="buyItem('thruster', 1, 1500)">1x Roket 🚀 (1500 ₺)</button>
             <button class="crate-btn" onclick="buyItem('seat', 1, 50)">1x Koltuk (50 ₺)</button>
         </div>
-      </div>
-            <div class="shop-section">
-        <h4>Özel Karakterler 🧑‍🌾</h4>
-        <button class="crate-btn" style="background:linear-gradient(180deg,#4CAF50 0%, #2E7D32 100%);" onclick="buySpecial('miner')">Madenci (5 Kupa)</button>
-        <p style="font-size:11px; color:#bbb; margin:8px 0 0;">Taşları otomatik kıran güvenli işçi.</p>
       </div>
       <button onclick="closeModals()" style="background: #d32f2f; width:100%; padding: 12px; border-radius:10px; font-weight:bold; border:none; color:white; cursor:pointer;">Dükkandan Çık</button>
     </div>
@@ -296,7 +308,7 @@
           distanceElem.innerText = gameState === 'sail' ? Math.floor(Math.abs(boatGroup.position.z)) : 0; 
       }
       
-      const items = ['wood','stone','metal','glass','obsidian','fence','window','gold','diamond','emerald','neon','ruby','titanium','lamp','chest','bed','wheel','cannon','engine','thruster','seat','miner'];
+      const items = ['wood','stone','metal','glass','obsidian','fence','window','gold','diamond','emerald','neon','ruby','titanium','lamp','chest','bed','wheel','cannon','engine','thruster','seat','miner','farter'];
       items.forEach(item => { 
           const elem = document.getElementById('inv-'+item);
           if(elem) { elem.innerText = playerData.inventory[item] || 0; } 
@@ -339,11 +351,15 @@
     let rocketFuel = 0.0; 
     let lastSaveTime = 0;
 
+    let buildAreaLevel = 0;
+    let buildLimit = 9;
+    let farterTimer = 0;
+
     let playerData = {
       money: 500, hp: 100, cups: 0, 
       inventory: { 
           wood: 150, stone: 80, metal: 25, glass: 20, obsidian: 5, fence: 10, window: 10, gold: 10, diamond: 2, emerald: 3, neon: 10, 
-          ruby: 5, titanium: 5, chest: 2, lamp: 5, bed: 2, wheel: 2, cannon: 3, engine: 2, thruster: 1, seat: 2, miner: 0 
+          ruby: 5, titanium: 5, chest: 2, lamp: 5, bed: 2, wheel: 2, cannon: 3, engine: 2, thruster: 1, seat: 2, miner: 0, farter: 0 
       }
     };
 
@@ -410,7 +426,8 @@
       cannon: { color: 0x222222, hp: 5 },
       engine: { color: 0x333333, hp: 3 }, 
       seat: { color: 0x0047ab, hp: 1 },
-      miner: { color: 0x2e7d32, hp: 8 }
+      miner: { color: 0x2e7d32, hp: 8 },
+      farter: { color: 0x8b4513, hp: 8 }
     };
 
     // =========================================================
@@ -505,7 +522,8 @@
                 playerData: playerData,
                 blocks: blocksToSave,
                 blueprint: buildBlueprint,
-                zone: Math.min(10, currentZone)
+                zone: Math.min(10, currentZone),
+                buildAreaLevel: buildAreaLevel
             });
             alert("Başarılı! Gemi ve envanter buluta kaydedildi. ☁️🚀");
         } catch (e) { 
@@ -526,8 +544,11 @@
                 if(data.playerData) playerData = data.playerData;
                 if(playerData.cups === undefined) playerData.cups = 0;
                 if(playerData.inventory && playerData.inventory.miner === undefined) playerData.inventory.miner = 0;
+                if(playerData.inventory && playerData.inventory.farter === undefined) playerData.inventory.farter = 0;
                 
-                currentZone = 0; // DEĞİŞEN KISIM: Buluttan çekilse bile bölgeyi sıfırla
+                currentZone = 0;
+                if(data.buildAreaLevel !== undefined) buildAreaLevel = data.buildAreaLevel;
+                window.applyBuildAreaSize();
                 
                 if(data.blueprint && Array.isArray(data.blueprint)) buildBlueprint = data.blueprint;
 
@@ -562,25 +583,30 @@
                 inventory: playerData.inventory,
                 blocks: boatBlocks.map(b => ({ type: b.userData.type, x: Math.round(b.position.x), y: Math.round(b.position.y), z: Math.round(b.position.z), r: b.rotation.y })),
                 blueprint: buildBlueprint,
-                zone: Math.min(10, currentZone)
+                zone: Math.min(10, currentZone),
+                buildAreaLevel: buildAreaLevel
             };
-            localStorage.setItem('buildBoardSaveV12', JSON.stringify(data));
+            localStorage.setItem('buildBoardSaveV13', JSON.stringify(data));
             lastSaveTime = now;
         }
     }
 
     function loadLocal() {
-        const save = localStorage.getItem('buildBoardSaveV12');
+        const save = localStorage.getItem('buildBoardSaveV13') || localStorage.getItem('buildBoardSaveV12');
         if (save) {
             try {
                 const data = JSON.parse(save);
                 if(data.money !== undefined) playerData.money = data.money;
                 if(data.cups !== undefined) playerData.cups = data.cups;
+                if(data.buildAreaLevel !== undefined) buildAreaLevel = data.buildAreaLevel;
                 
-                currentZone = 0; // DEĞİŞEN KISIM: Yerel hafızadan çekerken de bölgeyi sıfırla
+                currentZone = 0;
+                window.applyBuildAreaSize();
                 
                 if(data.blueprint && Array.isArray(data.blueprint)) buildBlueprint = data.blueprint;
                 if(data.inventory) { for(let k in data.inventory) { playerData.inventory[k] = data.inventory[k]; } }
+                if(playerData.inventory.farter === undefined) playerData.inventory.farter = 0;
+
                 if(data.blocks && Array.isArray(data.blocks)) {
                     boatBlocks.forEach(b => boatGroup.remove(b));
                     boatBlocks = [];
@@ -633,7 +659,7 @@
     water.rotation.x = -Math.PI / 2; 
     water.position.y = -0.5; 
     water.receiveShadow = true; 
-    water.visible = false; // İNŞA MODUNDA DENİZ GİZLİ (KUM PÜRÜZSÜZ KALIR)
+    water.visible = false; 
     scene.add(water);
 
     const buildPlane = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1.0 })); 
@@ -751,13 +777,14 @@
       const hit = hits[0];
       if (hit.object === buildPlane) {
         if (removeMode) return null; 
-        const x = Math.max(-9, Math.min(9, Math.round(hit.point.x))); const z = Math.max(-9, Math.min(9, Math.round(hit.point.z)));
+        const x = Math.max(-buildLimit, Math.min(buildLimit, Math.round(hit.point.x))); 
+        const z = Math.max(-buildLimit, Math.min(buildLimit, Math.round(hit.point.z)));
         let maxY = -1; boatBlocks.forEach(b => { if (Math.round(b.position.x) === x && Math.round(b.position.z) === z) maxY = Math.max(maxY, Math.round(b.position.y)); });
         return { x, y: maxY + 1, z };
       }
       const worldPos = hit.object.getWorldPosition(new THREE.Vector3());
       const target = removeMode ? worldPos.clone() : worldPos.clone().add(hit.face.normal.clone().transformDirection(hit.object.matrixWorld).round());
-      return { x: Math.max(-9, Math.min(9, Math.round(target.x))), y: Math.max(0, Math.round(target.y)), z: Math.max(-9, Math.min(9, Math.round(target.z))) };
+      return { x: Math.max(-buildLimit, Math.min(buildLimit, Math.round(target.x))), y: Math.max(0, Math.round(target.y)), z: Math.max(-buildLimit, Math.min(buildLimit, Math.round(target.z))) };
     }
 
     function updatePlacementPreview(cell) {
@@ -803,7 +830,7 @@
 
     function forcePlaceBlock(type, x, y, z) {
       const d = blockData[type]; if(!d) return;
-      let isCustom = (type === 'seat' || type === 'engine' || type === 'chest' || type === 'lamp' || type === 'fence' || type === 'window' || type === 'bed' || type === 'wheel' || type === 'miner');
+      let isCustom = (type === 'seat' || type === 'engine' || type === 'chest' || type === 'lamp' || type === 'fence' || type === 'window' || type === 'bed' || type === 'wheel' || type === 'miner' || type === 'farter');
       let block;
       
       if (isCustom) {
@@ -842,8 +869,8 @@
               const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 8, 16), visMat); wheel.position.set(0, 0, 0.4); wheel.castShadow = true;
               block.add(base); block.add(wheel);
           } else if (type === 'bed') {
-              const base = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.3, 0.9), new THREE.MeshStandardMaterial({ color: 0xaa0000 })); base.position.y = -0.35; base.castShadow = true;
-              const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.1, 0.3), new THREE.MeshStandardMaterial({ color: 0xffffff })); pillow.position.set(0, -0.15, -0.25); pillow.castShadow = true;
+              const base = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.3, 0.9), new THREE.MeshStandardMaterial({ color: 0xaa0000 })); base.position.set(0.45, -0.35, 0); base.castShadow = true;
+              const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.8), new THREE.MeshStandardMaterial({ color: 0xffffff })); pillow.position.set(-0.25, -0.15, 0); pillow.castShadow = true;
               block.add(base); block.add(pillow);
           } else if (type === 'miner') {
               const torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.9, 0.45), new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 0.9 })); torso.position.y = 0.15; torso.castShadow = true;
@@ -853,6 +880,13 @@
               const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), new THREE.MeshStandardMaterial({ color: 0x2b2b2b })); rightLeg.position.set(0.16, -0.45, 0); rightLeg.castShadow = true;
               const drill = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 1.0), new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.4, metalness: 0.7 })); drill.position.set(0.68, 0.2, 0); drill.rotation.z = -0.15; drill.castShadow = true;
               block.add(torso); block.add(head); block.add(helmet); block.add(leftLeg); block.add(rightLeg); block.add(drill);
+          } else if (type === 'farter') {
+              const torso = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.9, 0.45), new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.9 })); torso.position.y = 0.15; torso.castShadow = true;
+              const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 14), new THREE.MeshStandardMaterial({ color: 0xffc9a3, roughness: 0.9 })); head.position.y = 0.95; head.castShadow = true;
+              const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.16, 14), new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.6 })); hat.position.y = 1.22; hat.castShadow = true;
+              const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), new THREE.MeshStandardMaterial({ color: 0x2b2b2b })); leftLeg.position.set(-0.16, -0.45, 0); leftLeg.castShadow = true;
+              const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), new THREE.MeshStandardMaterial({ color: 0x2b2b2b })); rightLeg.position.set(0.16, -0.45, 0); rightLeg.castShadow = true;
+              block.add(torso); block.add(head); block.add(hat); block.add(leftLeg); block.add(rightLeg);
           }
       } else {
           const material = new THREE.MeshStandardMaterial({ color: d.color, transparent: d.transparent || false, opacity: d.opacity || 1, roughness: d.rough || 0.5, metalness: d.metal || 0.0, emissive: d.emissive || 0x000000, emissiveIntensity: d.emissiveInt || 0 });
@@ -893,6 +927,33 @@
     window.toggleCamera = function() { cameraMode = cameraMode === '3rd' ? '1st' : '3rd'; document.getElementById('btn-camera').innerText = cameraMode === '3rd' ? 'Kamera: 3. Şahıs' : 'Kamera: 1. Şahıs'; };
     window.fireCannons = function() { if(gameState !== 'sail' || isEndingSequence || isMotherSequence) return; boatBlocks.filter(b => b.userData.type === 'cannon').forEach(c => { const projectile = new THREE.Mesh(new THREE.SphereGeometry(0.4), new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.8 })); const worldPos = new THREE.Vector3(); c.getWorldPosition(worldPos); projectile.position.copy(worldPos); scene.add(projectile); projectiles.push({ mesh: projectile, speed: 2.0 }); }); };
     
+    window.upgradeBuildArea = function() {
+        if (buildAreaLevel >= 2) return alert("Kum alanını zaten maksimum seviyeye büyüttün!");
+        if ((playerData.cups || 0) < 1) return alert("Bunun için 1 kupa gerekli!");
+        playerData.cups--;
+        buildAreaLevel++;
+        applyBuildAreaSize();
+        alert(`Kum alanı büyütüldü! (Seviye ${buildAreaLevel}/2)`);
+        updateUI();
+    };
+
+    window.applyBuildAreaSize = function() {
+        const currentScale = Math.pow(2, buildAreaLevel);
+        buildLimit = Math.floor((20 * currentScale) / 2) - 1;
+        buildPlane.scale.set(currentScale, 1, currentScale);
+        dirPlane.scale.set(currentScale, 1, currentScale);
+        
+        const btn = document.getElementById('btn-upgrade-area');
+        if(btn) {
+            if(buildAreaLevel >= 2) {
+                btn.innerText = "Maksimum Boyutta!";
+                btn.style.background = "#555";
+            } else {
+                btn.innerText = `Kum Alanını Büyüt (1 Kupa)`;
+            }
+        }
+    }
+
     window.buyCrate = function(type) { 
         if (type === 'ucuz' && playerData.money >= 50) { playerData.money -= 50; playerData.inventory.wood += 20; playerData.inventory.stone += 10; alert('Ucuz Kutu Açıldı!'); }
         else if (type === 'pahali' && playerData.money >= 300) { playerData.money -= 300; playerData.inventory.metal += 15; playerData.inventory.cannon += 2; alert('Gelişmiş Kutu Açıldı!'); }
@@ -914,6 +975,12 @@
             playerData.inventory.miner = (playerData.inventory.miner || 0) + 1;
             alert('Madenci satın alındı!');
             updateUI();
+        } else if (type === 'farter') {
+            if ((playerData.cups || 0) < 1) return alert('Bu karakter için 1 kupa gerekli!');
+            playerData.cups = Math.max(0, (playerData.cups || 0) - 1);
+            playerData.inventory.farter = (playerData.inventory.farter || 0) + 1;
+            alert('Osurukçu satın alındı!');
+            updateUI();
         }
     };
 
@@ -921,9 +988,9 @@
       const group = new THREE.Group();
 
       const skin = new THREE.MeshStandardMaterial({ color: 0xffc9a3, roughness: 0.9 });
-      const cloth = new THREE.MeshStandardMaterial({ color: kind === 'miner' ? 0x2e7d32 : 0x1565c0, roughness: 0.9 });
+      const cloth = new THREE.MeshStandardMaterial({ color: kind === 'miner' ? 0x2e7d32 : (kind === 'farter' ? 0x8b4513 : 0x1565c0), roughness: 0.9 });
       const pants = new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 1.0 });
-      const helmet = new THREE.MeshStandardMaterial({ color: kind === 'miner' ? 0xffd54f : 0xdddddd, roughness: 0.6, metalness: 0.1 });
+      const helmet = new THREE.MeshStandardMaterial({ color: kind === 'miner' ? 0xffd54f : (kind === 'farter' ? 0x5c4033 : 0xdddddd), roughness: 0.6, metalness: 0.1 });
       const toolMat = new THREE.MeshStandardMaterial({ color: 0x9e9e9e, roughness: 0.4, metalness: 0.7 });
 
       const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.45), cloth);
@@ -958,6 +1025,11 @@
         tool.position.set(0.65, 1.45, 0.05);
         tool.rotation.z = -0.2;
         group.add(tool);
+      } else if (kind === 'farter') {
+        const helmetMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.38, 0.18, 18), helmet);
+        helmetMesh.position.y = 2.34;
+        helmetMesh.castShadow = true;
+        group.add(helmetMesh);
       }
 
       const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.75, 0.18), skin);
@@ -1024,8 +1096,8 @@
         let highestY = 0; boatBlocks.forEach(b => { if(b.position.y > highestY) highestY = b.position.y; });
         playerCharacterModel.position.set(0, highestY + 1, 0); boatGroup.add(playerCharacterModel);
         
-        // EKLENEN KISIM: Her zaman en baştan (0) başla
         currentZone = 0; 
+        farterTimer = 0;
         
         lastGeneratedZ = 0; generateChunk(currentZone); lastTime = performance.now(); 
       } else { resetGame(); }
@@ -1057,7 +1129,7 @@
       if(playerCharacterModel && playerCharacterModel.parent) { playerCharacterModel.parent.remove(playerCharacterModel); playerCharacterModel = null; }
       
       isEndingSequence = false; isMotherSequence = false; endingPhase = 0; 
-      zone10WinActive = false; // EKLENEN KISIM: Bölge 10 zaferini sıfırlama
+      zone10WinActive = false; 
       
       if (portalRing) { scene.remove(portalRing); portalRing = null; }
       if (meteor) { scene.remove(meteor); meteor = null; }
@@ -1089,9 +1161,13 @@
       scene.background.setHex(biome.sky); scene.fog.color.setHex(biome.sky); waterMaterial.color.setHex(biome.water);
       const startZ = lastGeneratedZ; const chunkLength = 300; const endZ = startZ - chunkLength; 
       
+      const currentScale = Math.pow(2, buildAreaLevel);
+      const wallX = 16 * currentScale;
+      const spread = 24 * currentScale;
+
       const borderGeo = new THREE.BoxGeometry(4, 10, chunkLength); const borderMat = new THREE.MeshStandardMaterial({ color: biome.wall, roughness: 0.9 });
-      const leftWall = new THREE.Mesh(borderGeo, borderMat); leftWall.position.set(-16, 5, startZ - (chunkLength/2)); leftWall.receiveShadow = true; scene.add(leftWall); environmentChunks.push(leftWall);
-      const rightWall = new THREE.Mesh(borderGeo, borderMat); rightWall.position.set(16, 5, startZ - (chunkLength/2)); rightWall.receiveShadow = true; scene.add(rightWall); environmentChunks.push(rightWall);
+      const leftWall = new THREE.Mesh(borderGeo, borderMat); leftWall.position.set(-wallX, 5, startZ - (chunkLength/2)); leftWall.receiveShadow = true; scene.add(leftWall); environmentChunks.push(leftWall);
+      const rightWall = new THREE.Mesh(borderGeo, borderMat); rightWall.position.set(wallX, 5, startZ - (chunkLength/2)); rightWall.receiveShadow = true; scene.add(rightWall); environmentChunks.push(rightWall);
 
       const obstacleCount = 40 + (zoneIndex * 10);
       for (let i = 0; i < obstacleCount; i++) {
@@ -1100,12 +1176,12 @@
         else { geo = new THREE.DodecahedronGeometry(size); mat = new THREE.MeshStandardMaterial({ color: biome.rock, roughness: 0.8 }); }
         const obs = new THREE.Mesh(geo, mat); obs.castShadow = true; obs.receiveShadow = true;
         if (obsType > 0.8) { obs.rotation.z = Math.PI / 2; obs.rotation.y = Math.random() * Math.PI; }
-        obs.position.set((Math.random() - 0.5) * 24, size / 2 - 0.5, startZ - Math.random() * chunkLength); obs.userData = { type: 'rock' }; scene.add(obs); obstacles.push(obs);
+        obs.position.set((Math.random() - 0.5) * spread, size / 2 - 0.5, startZ - Math.random() * chunkLength); obs.userData = { type: 'rock' }; scene.add(obs); obstacles.push(obs);
       }
 
       for (let i = 0; i < 15 + (zoneIndex * 5); i++) {
         const coinGeo = new THREE.TorusGeometry(0.6, 0.15, 8, 16); const coinMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.2, metalness: 1.0 });
-        const coin = new THREE.Mesh(coinGeo, coinMat); coin.position.set((Math.random() - 0.5) * 22, 1.0, startZ - Math.random() * chunkLength); coin.castShadow = true; scene.add(coin); coins.push(coin);
+        const coin = new THREE.Mesh(coinGeo, coinMat); coin.position.set((Math.random() - 0.5) * (spread - 2), 1.0, startZ - Math.random() * chunkLength); coin.castShadow = true; scene.add(coin); coins.push(coin);
       }
       lastGeneratedZ = endZ;
     }
@@ -1330,14 +1406,6 @@
             if (Math.sin(dayTime) < -0.2) { scene.background.setHex(0x0a0a1a); scene.fog.color.setHex(0x0a0a1a); } 
             else { scene.background.setHex(biome.sky); scene.fog.color.setHex(biome.sky); }
 
-            if (false) {
-                if (Math.random() < 0.03) { 
-                    let hazard = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5 + Math.random()), new THREE.MeshStandardMaterial({ color: 0xff3300, emissive: 0xff0000, emissiveIntensity: 0.5 }));
-                    hazard.position.set(boatGroup.position.x + (Math.random() - 0.5)*20, 60, boatGroup.position.z - (Math.random()*40) - 10);
-                    scene.add(hazard); fallingHazards.push(hazard);
-                }
-            }
-
             for (let i = fallingHazards.length - 1; i >= 0; i--) {
                 let h = fallingHazards[i]; h.position.y -= 1.2; 
                 if (h.position.y < -5) { scene.remove(h); fallingHazards.splice(i, 1); continue; }
@@ -1374,9 +1442,12 @@
             const baseSpeed = Math.min(1.5, 0.35 + (currentZone * 0.05)) + engineBoost; 
             const boost = Math.max(0, controlVector.y) * 0.20;
 
+            const currentScale = Math.pow(2, buildAreaLevel);
+            const wallX = 16 * currentScale;
+
             let minX = 0, maxX = 0;
             if (boatBlocks.length > 0) { minX = Math.min(...boatBlocks.map(b => b.position.x)); maxX = Math.max(...boatBlocks.map(b => b.position.x)); }
-            const limitLeft = -14 - minX; const limitRight = 14 - maxX;
+            const limitLeft = -(wallX - 2) - minX; const limitRight = (wallX - 2) - maxX;
 
             boatGroup.position.x += controlVector.x * 0.35; boatGroup.position.z -= baseSpeed + boost;
             if (boatGroup.position.x < limitLeft) boatGroup.position.x = limitLeft; if (boatGroup.position.x > limitRight) boatGroup.position.x = limitRight;
@@ -1417,6 +1488,30 @@
               });
             }
 
+            farterTimer += dt;
+            if (farterTimer >= 2.0) {
+                farterTimer = 0;
+                const farters = boatBlocks.filter(b => b.userData.type === 'farter');
+                if (farters.length > 0) {
+                    const brownColor = new THREE.Color(0x5c4033);
+                    function tintBrown(obj) {
+                        if (obj.isMesh && obj.material && obj.material.color) { obj.material.color.lerp(brownColor, 0.15); }
+                        if (obj.children) { obj.children.forEach(tintBrown); }
+                    }
+                    farters.forEach(farter => {
+                        let wp = new THREE.Vector3(); farter.getWorldPosition(wp);
+                        for(let i=0; i<6; i++) {
+                            const p = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0x654321, transparent:true, opacity:0.8 }));
+                            p.position.copy(wp).add(new THREE.Vector3((Math.random()-0.5)*1.5, -0.2, (Math.random()-0.5)*1.5));
+                            scene.add(p);
+                            particles.push({ mesh: p, velocity: new THREE.Vector3((Math.random()-0.5)*0.5, Math.random()*0.3, (Math.random()-0.5)*0.5), life: 1.0 });
+                        }
+                        boatBlocks.forEach(b => { if (b.position.distanceTo(farter.position) < 6) tintBrown(b); });
+                        obstacles.forEach(o => { if (o.position.distanceTo(wp) < 10) tintBrown(o); });
+                    });
+                }
+            }
+
             projectiles.forEach((p, pIdx) => {
               p.mesh.position.z -= p.speed; 
               for(let oIdx = obstacles.length - 1; oIdx >= 0; oIdx--) {
@@ -1439,7 +1534,6 @@
             if (newZone > currentZone) { 
                 currentZone = newZone; playerData.money += 15 + (currentZone * 5); updateUI();
                 if (currentZone === 10) startZone10Win(); 
-                 
             }
             
             if (cameraMode === '3rd') {
@@ -1455,7 +1549,8 @@
           if (p.life <= 0) { scene.remove(p.mesh); particles.splice(pIdx, 1); } else { p.mesh.position.add(p.velocity); p.mesh.scale.setScalar(p.life); }
         }
       } else if (gameState === 'build') {
-        const radius = 24; camera.position.lerp(new THREE.Vector3(buildCameraTarget.x + Math.sin(buildCameraAngleX) * radius, buildCameraPitch, buildCameraTarget.z + Math.cos(buildCameraAngleX) * radius), 0.15); camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
+        const radius = 24 * Math.max(1, Math.pow(2, buildAreaLevel) * 0.6); 
+        camera.position.lerp(new THREE.Vector3(buildCameraTarget.x + Math.sin(buildCameraAngleX) * radius, buildCameraPitch, buildCameraTarget.z + Math.cos(buildCameraAngleX) * radius), 0.15); camera.lookAt(buildCameraTarget.x, 0, buildCameraTarget.z);
       }
       renderer.render(scene, camera);
     }
